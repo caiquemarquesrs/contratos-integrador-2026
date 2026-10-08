@@ -1,0 +1,58 @@
+# Toda configuração que muda por ambiente vem de variável (Contrato §13.3).
+# Os valores depois de ":" servem para rodar na máquina com o docker compose do infra.
+server:
+  port: ${SERVER_PORT:8084}
+  max-http-request-header-size: 32KB   # token de ADMINISTRADOR pode passar de 8 KB (Contrato §4.4)
+
+modulo:
+  codigo: contratos
+
+spring:
+  application:
+    name: contratos
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/plataforma}
+    username: ${DB_APP_USER:usr_contratos}
+    password: ${DB_APP_PASSWORD:troque}
+
+  flyway:
+    user: ${DB_OWNER_USER:own_contratos}          # migrations rodam com o dono do schema (Contrato §7.1)
+    password: ${DB_OWNER_PASSWORD:troque}
+    schemas: contratos
+    default-schema: contratos
+    create-schemas: false                        # o schema já foi criado pelo infra
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none                             # estrutura só por migration
+    properties:
+      hibernate:
+        default_schema: contratos
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    virtual-host: ${RABBITMQ_VHOST:plataforma}
+    username: ${RABBITMQ_USER:mq_contratos}
+    password: ${RABBITMQ_PASSWORD:troque}
+    listener:
+      simple:
+        default-requeue-rejected: false          # esgotadas as tentativas, vai para a .dlq
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWKS_URI:http://localhost:8081/api/identity/.well-known/jwks.json}
+          audiences: plataforma
+
+logging:
+  pattern:
+    level: "%5p [%X{requestId:-}]"

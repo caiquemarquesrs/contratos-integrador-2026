@@ -1,0 +1,90 @@
+/*
+ * Tema da plataforma — Design System da Centinela Soluções, em Tailwind CSS v4.
+ *
+ * Copie para o seu front (ex.: src/tema/plataforma.css) e importe logo depois do Tailwind:
+ *   @import "tailwindcss";
+ *   @import "./tema/plataforma.css";
+ * e carregue a fonte Inter no index.html:
+ *   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap">
+ *
+ * Duas famílias de cor:
+ *   brand-*    a paleta da Centinela (azul-marinho e verde), igual nos dois temas: sidebar, cabeçalho
+ *              de página, botão primário, item ativo.
+ *   neutros    fundo, superficie, texto, borda... mudam no tema escuro. Use-os no lugar de
+ *              bg-white, text-gray-700, border-gray-200: é o que faz a tela funcionar nos dois temas.
+ *
+ * O tema escuro segue o atributo data-tema="escuro" no <html>, que o módulo aplica ao receber
+ * plataforma:sessao ou plataforma:tema da casca (Contrato §12.1). Para um ajuste pontual, a
+ * variante dark: também segue o atributo (ex.: dark:bg-brand-900).
+ *
+ * Não edite a cópia: mudanças de tema entram por pull request no infra-integrador-2026.
+ */
+
+@custom-variant dark (&:where([data-tema="escuro"], [data-tema="escuro"] *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --color-brand-950: #0C1A2E;   /* navy escuro — sidebar, cabeçalho de página */
+  --color-brand-900: #0F2340;   /* navy médio */
+  --color-brand-800: #0B6B4E;   /* verde-teal escuro — botão primário */
+  --color-brand-700: #0D9B6E;   /* verde-teal — hover, item ativo, destaque */
+  --color-brand-600: #10B981;
+  --color-brand-500: #22C55E;   /* verde vivo — detalhe da marca */
+  --color-brand-400: #4ADE80;   /* texto de destaque sobre fundo escuro */
+  --color-brand-300: #86EFAC;   /* legenda sobre fundo escuro */
+  --color-brand-200: #BBF7D0;
+  --color-brand-100: #DCFCE7;   /* fundo de tag e de seção suave */
+  --color-brand-50: #F0FDF4;    /* hover */
+}
+
+:root {
+  color-scheme: light;
+  --fundo: #F4F6F9;
+  --superficie: #FFFFFF;
+  --superficie-2: #F8FAFC;
+  --texto: #111827;
+  --texto-2: #4B5563;
+  --texto-3: #6B7280;
+  --borda: #E5E7EB;
+  --borda-forte: #D1D5DB;
+  --titulo: #0C1A2E;
+}
+
+[data-tema="escuro"] {
+  color-scheme: dark;
+  --fundo: #07111E;
+  --superficie: #0E1B2D;
+  --superficie-2: #13243A;
+  --texto: #E6EBF2;
+  --texto-2: #B3BECD;
+  --texto-3: #8392A6;
+  --borda: #1D2F48;
+  --borda-forte: #2A405F;
+  --titulo: #F1F5F9;
+}
+
+@theme inline {
+  --color-fundo: var(--fundo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-texto: var(--texto);
+  --color-texto-2: var(--texto-2);
+  --color-texto-3: var(--texto-3);
+  --color-borda: var(--borda);
+  --color-borda-forte: var(--borda-forte);
+  --color-titulo: var(--titulo);
+}
+
+@layer base {
+  * {
+    @apply border-borda;
+  }
+  body {
+    @apply bg-fundo font-sans text-texto antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-700;
+  }
+}

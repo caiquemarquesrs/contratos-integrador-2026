@@ -1,0 +1,59 @@
+# CI de um módulo. Copie para .github/workflows/ci.yml na raiz do repositório do seu grupo.
+# Roda os testes em todo push e pull request; publica as imagens a cada push na main.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Testes (Testcontainers usa o Docker do runner)
+        working-directory: api
+        run: mvn -B verify
+
+  front:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+      - name: Build
+        working-directory: front
+        run: |
+          npm ci
+          npm run build
+
+  publicar-api:
+    if: github.event_name == 'push'
+    needs: [api]
+    permissions:
+      contents: read
+      packages: write
+    uses: karolAlbuquerque/infra-integrador-2026/.github/workflows/publicar-imagem.yml@main
+    with:
+      imagem: contratos          # troque pelo código do seu módulo
+      contexto: api
+
+  publicar-front:
+    if: github.event_name == 'push'
+    needs: [front]
+    permissions:
+      contents: read
+      packages: write
+    uses: karolAlbuquerque/infra-integrador-2026/.github/workflows/publicar-imagem.yml@main
+    with:
+      imagem: contratos-front    # troque pelo código do seu módulo + "-front"
+      contexto: front

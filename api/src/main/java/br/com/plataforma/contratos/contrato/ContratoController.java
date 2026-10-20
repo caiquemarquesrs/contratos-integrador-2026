@@ -10,10 +10,13 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.plataforma.contratos.api.Pagina;
 import br.com.plataforma.contratos.api.Resposta;
 import br.com.plataforma.contratos.crm.ClienteCrm;
 import br.com.plataforma.contratos.seguranca.Usuarios;
@@ -35,6 +38,18 @@ public class ContratoController {
         this.crm = crm;
     }
 
+    @GetMapping
+    @PreAuthorize("hasAuthority('contratos.contrato.ver')")
+    public Resposta<Pagina<ContratoDto>> listar(@RequestParam(defaultValue = "0") int pagina,
+                                                @RequestParam(defaultValue = "20") int tamanho,
+                                                @RequestParam(required = false) String q,
+                                                @RequestParam(required = false) UUID empresaId,
+                                                @RequestParam(required = false) StatusContrato status,
+                                                @RequestParam(defaultValue = "criadoEm,desc") String ordenar) {
+        return Resposta.ok(servico.listar(q, empresaId, status, ordenar,
+                Math.max(pagina, 0), Math.clamp(tamanho, 1, 100)));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('contratos.contrato.ver')")
     public Resposta<ContratoDto> ver(@PathVariable UUID id) {
@@ -49,5 +64,12 @@ public class ContratoController {
         ContratoDto contrato = servico.criar(corpo, Usuarios.idDe(jwt), empresaNome);
         return ResponseEntity.created(URI.create("/api/contratos/contratos/" + contrato.id()))
                 .body(Resposta.ok(contrato));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('contratos.contrato.editar')")
+    public Resposta<ContratoDto> editar(@PathVariable UUID id, @Valid @RequestBody EdicaoContrato corpo,
+                                        @AuthenticationPrincipal Jwt jwt) {
+        return Resposta.ok(servico.editar(id, corpo, Usuarios.idDe(jwt)));
     }
 }

@@ -1,11 +1,6 @@
 package br.com.plataforma.contratos.eventos;
 
-import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.MessagePostProcessor;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -17,51 +12,18 @@ import org.springframework.context.annotation.Configuration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Exchanges e filas do módulo. Regra das permissões do broker: o módulo declara só o que começa
- * com o próprio código. A exchange de outro módulo é referenciada pelo nome, nunca declarada —
- * declará-la seria recusado pelo RabbitMQ.
+ * Exchange do módulo. Regra das permissões do broker: o módulo declara só o que começa com o
+ * próprio código. Este módulo só PUBLICA eventos (contratos.contrato.assinado, para o Financeiro);
+ * quem consome cria a própria fila e a liga a esta exchange, então aqui não há fila nem consumidor.
  */
 @Configuration
 public class TopologiaMensageria {
 
     static final String EXCHANGE_PROPRIA = "contratos.eventos";
-    static final String DLX = "contratos.dlx";
-    static final String FILA_CONTRATO_ASSINADO = "contratos.contrato-assinado";
 
     @Bean
     TopicExchange exchangePropria() {
         return new TopicExchange(EXCHANGE_PROPRIA, true, false);
-    }
-
-    @Bean
-    DirectExchange exchangeDeMensagensComFalha() {
-        return new DirectExchange(DLX, true, false);
-    }
-
-    @Bean
-    Queue filaContratoAssinado() {
-        return QueueBuilder.durable(FILA_CONTRATO_ASSINADO)
-                .deadLetterExchange(DLX)
-                .deadLetterRoutingKey(FILA_CONTRATO_ASSINADO + ".dlq")
-                .build();
-    }
-
-    @Bean
-    Queue dlqContratoAssinado() {
-        return QueueBuilder.durable(FILA_CONTRATO_ASSINADO + ".dlq").build();
-    }
-
-    @Bean
-    Binding ligacaoDaDlq() {
-        return BindingBuilder.bind(dlqContratoAssinado()).to(exchangeDeMensagensComFalha())
-                .with(FILA_CONTRATO_ASSINADO + ".dlq");
-    }
-
-    /** Liga a fila à exchange do módulo Contratos, sem declarar a exchange dele. */
-    @Bean
-    Binding ligacaoContratoAssinado() {
-        return new Binding(FILA_CONTRATO_ASSINADO, Binding.DestinationType.QUEUE,
-                "contratos.eventos", "contratos.contrato.assinado", null);
     }
 
     /**

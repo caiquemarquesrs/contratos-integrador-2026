@@ -1,6 +1,7 @@
 package br.com.plataforma.contratos.api;
 
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,13 +22,37 @@ public class TratadorDeErros {
 
     private static final Logger log = LoggerFactory.getLogger(TratadorDeErros.class);
 
+    /** Campos de dinheiro: com mais de 2 casas decimais o código é PRECISAO_EXCEDIDA, sem arredondar (§8.7). */
+    private static final Set<String> CAMPOS_MONETARIOS = Set.of("valorMensal", "mrr", "valorUnitario", "valorTotal");
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<Resposta<Void>> dadosInvalidos(MethodArgumentNotValidException e) {
         List<ErroCampo> erros = e.getBindingResult().getFieldErrors().stream()
-                .map(c -> new ErroCampo(c.getField(), "CAMPO_INVALIDO", c.getDefaultMessage()))
+                .map(c -> new ErroCampo(c.getField(), codigoDe(c), c.getDefaultMessage()))
                 .toList();
         return ResponseEntity.badRequest()
                 .body(Resposta.falha("Não foi possível salvar: confira os campos.", erros));
+    }
+
+    /** @Digits num campo monetário é excesso de precisão; qualquer outra violação é CAMPO_INVALIDO. */
+    private static String codigoDe(FieldError erro) {
+        // o caminho pode ser aninhado, como "servicosContratados[0].valorUnitario"
+        String campo = erro.getField().substring(erro.getField().lastIndexOf('.') + 1);
+        return "Digits".equals(erro.getCode()) && CAMPOS_MONETARIOS.contains(campo)
+                ? "PRECISAO_EXCEDIDA"
+                : "CAMPO_INVALIDO";
+    }
+
+    @ExceptionHandler(CampoInvalidoException.class)
+    ResponseEntity<Resposta<Void>> campoInvalido(CampoInvalidoException e) {
+        return ResponseEntity.badRequest()
+                .body(Resposta.falha("Não foi possível salvar: confira os campos.", List.of(e.getErro())));
+    }
+
+    @ExceptionHandler(ConflitoDeEstadoException.class)
+    ResponseEntity<Resposta<Void>> conflitoDeEstado(ConflitoDeEstadoException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Resposta.falha(e.getMessage(), List.of(e.getErro())));
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})

@@ -239,6 +239,11 @@ public class Contrato implements Persistable<UUID> {
         return vigenciaMeses;
     }
 
+    /** Derivada (dataInicio + vigenciaMeses); nula quando o contrato não tem prazo. Usada pelo módulo de integração. */
+    public LocalDate getVigenciaFim() {
+        return vigenciaFim;
+    }
+
     public String getRenovacao() {
         return renovacao;
     }

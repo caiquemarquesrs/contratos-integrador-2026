@@ -1,14 +1,19 @@
 package br.com.plataforma.contratos.contrato;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.plataforma.contratos.api.CampoInvalidoException;
 import br.com.plataforma.contratos.api.ConflitoDeEstadoException;
 import br.com.plataforma.contratos.api.NaoEncontradoException;
+import br.com.plataforma.contratos.api.Pagina;
 import br.com.plataforma.contratos.modelo.ModeloRepositorio;
 import br.com.plataforma.contratos.tenant.TenantContexto;
 import jakarta.persistence.EntityManager;
@@ -40,6 +45,47 @@ public class ContratoServico {
         Contrato contrato = Contrato.novo(proximoNumero(), corpo.empresaId(), empresaNome, corpo.origem(),
                 corpo.origemModuloId(), corpo.dados(), usuario);
         return ContratoDto.de(contratos.save(contrato));
+    }
+
+    /** Ordenações aceitas em "ordenar". O id desempata, para a paginação não repetir nem perder itens. */
+    private static final Map<String, Sort> ORDENACOES = Map.of(
+            "criadoEm,desc", Sort.by(Sort.Order.desc("criadoEm"), Sort.Order.asc("id")),
+            "criadoEm,asc", Sort.by(Sort.Order.asc("criadoEm"), Sort.Order.asc("id")),
+            "vigenciaFim,asc", Sort.by(Sort.Order.asc("vigenciaFim"), Sort.Order.asc("id")),
+            "valorMensal,desc", Sort.by(Sort.Order.desc("valorMensal"), Sort.Order.asc("id")));
+
+    /**
+     * Lista os contratos da empresa do token. {@code q} (mínimo 2 caracteres) procura no número ou no
+     * nome da empresa, sem diferenciar maiúscula de minúscula. Parâmetro inválido responde 400.
+     */
+    @Transactional(readOnly = true)
+    public Pagina<ContratoDto> listar(String q, UUID empresaId, StatusContrato status, String ordenar,
+                                      int pagina, int tamanho) {
+        if (q != null && q.strip().length() < 2) {
+            throw new CampoInvalidoException("q", "CAMPO_INVALIDO", "A busca precisa de ao menos 2 caracteres.");
+        }
+        Sort ordem = ORDENACOES.get(ordenar);
+        if (ordem == null) {
+            throw new CampoInvalidoException("ordenar", "CAMPO_INVALIDO",
+                    "Use criadoEm,desc, criadoEm,asc, vigenciaFim,asc ou valorMensal,desc.");
+        }
+
+        Specification<Contrato> filtros = (raiz, consulta, cb) -> cb.conjunction();
+        if (empresaId != null) {
+            filtros = filtros.and((raiz, consulta, cb) -> cb.equal(raiz.get("empresaId"), empresaId));
+        }
+        if (status != null) {
+            filtros = filtros.and((raiz, consulta, cb) -> cb.equal(raiz.get("status"), status));
+        }
+        if (q != null) {
+            String padrao = "%" + q.strip().toLowerCase()
+                    .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+            filtros = filtros.and((raiz, consulta, cb) -> cb.or(
+                    cb.like(cb.lower(raiz.get("numero")), padrao, '\\'),
+                    cb.like(cb.lower(raiz.get("empresaNome")), padrao, '\\')));
+        }
+
+        return Pagina.de(contratos.findAll(filtros, PageRequest.of(pagina, tamanho, ordem)), ContratoDto::de);
     }
 
     @Transactional(readOnly = true)

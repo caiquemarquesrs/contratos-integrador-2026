@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.com.plataforma.contratos.api.Resposta;
+import br.com.plataforma.contratos.crm.ClienteCrm;
 import br.com.plataforma.contratos.seguranca.Usuarios;
 import jakarta.validation.Valid;
 
@@ -27,9 +28,11 @@ import jakarta.validation.Valid;
 public class ContratoController {
 
     private final ContratoServico servico;
+    private final ClienteCrm crm;
 
-    public ContratoController(ContratoServico servico) {
+    public ContratoController(ContratoServico servico, ClienteCrm crm) {
         this.servico = servico;
+        this.crm = crm;
     }
 
     @GetMapping("/{id}")
@@ -42,7 +45,8 @@ public class ContratoController {
     @PreAuthorize("hasAuthority('contratos.contrato.criar')")
     public ResponseEntity<Resposta<ContratoDto>> criar(@Valid @RequestBody NovoContrato corpo,
                                                        @AuthenticationPrincipal Jwt jwt) {
-        ContratoDto contrato = servico.criar(corpo, Usuarios.idDe(jwt));
+        String empresaNome = crm.razaoSocial(corpo.empresaId(), jwt.getTokenValue()).orElse(null);
+        ContratoDto contrato = servico.criar(corpo, Usuarios.idDe(jwt), empresaNome);
         return ResponseEntity.created(URI.create("/api/contratos/contratos/" + contrato.id()))
                 .body(Resposta.ok(contrato));
     }

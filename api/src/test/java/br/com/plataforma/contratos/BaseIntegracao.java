@@ -16,6 +16,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import br.com.plataforma.contratos.crm.ClienteCrm;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.PostgreSQLContainer;
 
@@ -45,6 +46,10 @@ public abstract class BaseIntegracao {
 
     @MockitoBean
     protected RabbitTemplate rabbit;
+
+    /** O CRM de verdade não existe no CI: nos testes ele é falso e, por padrão, "não respondeu". */
+    @MockitoBean
+    protected ClienteCrm crm;
 
     @Autowired
     protected MockMvc mvc;

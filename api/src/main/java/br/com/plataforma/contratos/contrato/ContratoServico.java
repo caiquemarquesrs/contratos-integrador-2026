@@ -31,14 +31,13 @@ public class ContratoServico {
     }
 
     @Transactional
-    public ContratoDto criar(NovoContrato corpo, UUID usuario) {
+    public ContratoDto criar(NovoContrato corpo, UUID usuario, String empresaNome) {
         TenantContexto.exigir();   // nunca gravar sem tenant definido
         conferirModelo(corpo.modeloId());
 
-        // TODO (decisão do grupo): empresaNome deveria ser cópia da razão social no cadastro (§9.5), buscada
-        // no CRM (GET /api/crm/empresas/{id}/resumo, token de serviço, timeout de 3 s, sem derrubar a
-        // criação se o CRM estiver fora — §9.6). O NovoContrato não o recebe, então fica nulo por enquanto.
-        Contrato contrato = Contrato.novo(proximoNumero(), corpo.empresaId(), corpo.origem(),
+        // empresaNome: cópia da razão social no momento do cadastro (§9.5), buscada no CRM pelo controller,
+        // fora desta transação. Vem nulo se o CRM não respondeu (§9.6).
+        Contrato contrato = Contrato.novo(proximoNumero(), corpo.empresaId(), empresaNome, corpo.origem(),
                 corpo.origemModuloId(), corpo.dados(), usuario);
         return ContratoDto.de(contratos.save(contrato));
     }

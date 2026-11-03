@@ -142,13 +142,14 @@ public class Contrato implements Persistable<UUID> {
                         List<DadosServico> servicos) {
     }
 
-    public static Contrato novo(String numero, UUID empresaId, String origem, String origemModuloId,
-                                Dados dados, UUID usuario) {
+    public static Contrato novo(String numero, UUID empresaId, String empresaNome, String origem,
+                                String origemModuloId, Dados dados, UUID usuario) {
         Contrato contrato = new Contrato();
         OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
         contrato.id = UUID.randomUUID();
         contrato.numero = numero;
         contrato.empresaId = empresaId;
+        contrato.empresaNome = empresaNome;
         contrato.origem = origem;
         contrato.origemModuloId = origemModuloId;
         contrato.status = StatusContrato.RASCUNHO;

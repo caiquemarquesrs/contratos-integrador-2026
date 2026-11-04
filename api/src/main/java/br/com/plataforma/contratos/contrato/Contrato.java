@@ -224,6 +224,10 @@ public class Contrato implements Persistable<UUID> {
         return novo;
     }
 
+    public UUID getTenantId() {
+        return tenantId;
+    }
+
     public String getNumero() {
         return numero;
     }

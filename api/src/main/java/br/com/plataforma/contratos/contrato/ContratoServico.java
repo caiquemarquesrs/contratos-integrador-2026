@@ -112,6 +112,29 @@ public class ContratoServico {
         return ContratoDto.de(contrato);
     }
 
+    /**
+     * EM_APROVACAO -> AGUARDANDO_ASSINATURA. Em qualquer outro estado a resposta é 409.
+     * A transição RASCUNHO -> EM_APROVACAO não existe no contratos.yaml (decisão do grupo: não alterar a infra).
+     */
+    @Transactional
+    public ContratoDto aprovar(UUID id, UUID usuario) {
+        Contrato contrato = obter(id);
+        exigirStatus(contrato, StatusContrato.EM_APROVACAO, "aprovado");
+        contrato.aprovar(usuario);
+        return ContratoDto.de(contrato);
+    }
+
+    /** 409 no formato do exemplo ConflitoDeEstado do contratos.yaml. */
+    private void exigirStatus(Contrato contrato, StatusContrato esperado, String acao) {
+        if (contrato.getStatus() != esperado) {
+            throw new ConflitoDeEstadoException(
+                    "O contrato precisa estar em " + esperado + " para ser " + acao + ".",
+                    "status",
+                    "TRANSICAO_INVALIDA",
+                    "Estado atual: " + contrato.getStatus() + ".");
+        }
+    }
+
     private Contrato obter(UUID id) {
         return contratos.buscarPorId(id).orElseThrow(() -> new NaoEncontradoException("Contrato não encontrado."));
     }

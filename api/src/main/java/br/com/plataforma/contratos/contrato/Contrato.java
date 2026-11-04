@@ -165,6 +165,13 @@ public class Contrato implements Persistable<UUID> {
         aplicar(dados, usuario, OffsetDateTime.now(ZoneOffset.UTC));
     }
 
+    /** EM_APROVACAO -> AGUARDANDO_ASSINATURA. Quem chama já conferiu o estado de origem. */
+    public void aprovar(UUID usuario) {
+        this.status = StatusContrato.AGUARDANDO_ASSINATURA;
+        this.atualizadoEm = OffsetDateTime.now(ZoneOffset.UTC);
+        this.atualizadoPor = usuario;
+    }
+
     private void aplicar(Dados dados, UUID usuario, OffsetDateTime agora) {
         this.modeloId = dados.modeloId();
         this.valorMensal = dados.valorMensal();

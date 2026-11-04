@@ -23,7 +23,8 @@ public class TratadorDeErros {
     private static final Logger log = LoggerFactory.getLogger(TratadorDeErros.class);
 
     /** Campos de dinheiro: com mais de 2 casas decimais o código é PRECISAO_EXCEDIDA, sem arredondar (§8.7). */
-    private static final Set<String> CAMPOS_MONETARIOS = Set.of("valorMensal", "mrr", "valorUnitario", "valorTotal");
+    private static final Set<String> CAMPOS_MONETARIOS =
+            Set.of("valorMensal", "mrr", "valorUnitario", "valorTotal", "reajusteAnualPercentual");
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<Resposta<Void>> dadosInvalidos(MethodArgumentNotValidException e) {

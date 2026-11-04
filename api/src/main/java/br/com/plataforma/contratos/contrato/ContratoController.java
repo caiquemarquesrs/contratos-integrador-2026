@@ -78,4 +78,11 @@ public class ContratoController {
     public Resposta<ContratoDto> aprovar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         return Resposta.ok(servico.aprovar(id, Usuarios.idDe(jwt)));
     }
+
+    @PostMapping("/{id}/assinar")
+    @PreAuthorize("hasAuthority('contratos.contrato.assinar')")
+    public Resposta<ContratoDto> assinar(@PathVariable UUID id, @Valid @RequestBody RegistroAssinatura corpo,
+                                         @AuthenticationPrincipal Jwt jwt) {
+        return Resposta.ok(servico.assinar(id, corpo, Usuarios.idDe(jwt)));
+    }
 }

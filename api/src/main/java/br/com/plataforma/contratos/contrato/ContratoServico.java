@@ -124,6 +124,19 @@ public class ContratoServico {
         return ContratoDto.de(contrato);
     }
 
+    /**
+     * AGUARDANDO_ASSINATURA -> ATIVO, registrando quem assinou e quando. Em qualquer outro estado a resposta é 409.
+     * O documentoAssinadoId do corpo é aceito, mas ainda não é gravado: os documentos ainda não existem no
+     * banco (estão com o Caique). Quando existirem, é aqui que o vínculo será feito.
+     */
+    @Transactional
+    public ContratoDto assinar(UUID id, RegistroAssinatura corpo, UUID usuario) {
+        Contrato contrato = obter(id);
+        exigirStatus(contrato, StatusContrato.AGUARDANDO_ASSINATURA, "assinado");
+        contrato.assinar(corpo.assinadoPor(), usuario);
+        return ContratoDto.de(contrato);
+    }
+
     /** 409 no formato do exemplo ConflitoDeEstado do contratos.yaml. */
     private void exigirStatus(Contrato contrato, StatusContrato esperado, String acao) {
         if (contrato.getStatus() != esperado) {

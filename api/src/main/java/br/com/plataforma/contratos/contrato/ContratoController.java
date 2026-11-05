@@ -72,4 +72,10 @@ public class ContratoController {
                                         @AuthenticationPrincipal Jwt jwt) {
         return Resposta.ok(servico.editar(id, corpo, Usuarios.idDe(jwt)));
     }
+
+    @PostMapping("/{id}/aprovar")
+    @PreAuthorize("hasAuthority('contratos.contrato.aprovar')")
+    public Resposta<ContratoDto> aprovar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        return Resposta.ok(servico.aprovar(id, Usuarios.idDe(jwt)));
+    }
 }

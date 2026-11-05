@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -172,6 +173,19 @@ public class Contrato implements Persistable<UUID> {
         this.atualizadoPor = usuario;
     }
 
+    /**
+     * AGUARDANDO_ASSINATURA -> ATIVO. Quem assinou é o {@code assinadoPor} do corpo (usuário ou contato do
+     * cliente), não o usuário do token; o token só vai para updated_by. Quem chama já conferiu o estado.
+     */
+    public void assinar(UUID assinadoPor, UUID usuario) {
+        OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
+        this.status = StatusContrato.ATIVO;
+        this.assinadoEm = agora;
+        this.assinadoPor = assinadoPor;
+        this.atualizadoEm = agora;
+        this.atualizadoPor = usuario;
+    }
+
     private void aplicar(Dados dados, UUID usuario, OffsetDateTime agora) {
         this.modeloId = dados.modeloId();
         this.valorMensal = dados.valorMensal();
@@ -277,6 +291,14 @@ public class Contrato implements Persistable<UUID> {
 
     public String getOrigemModuloId() {
         return origemModuloId;
+    }
+
+    public OffsetDateTime getAssinadoEm() {
+        return assinadoEm;
+    }
+
+    public UUID getAssinadoPor() {
+        return assinadoPor;
     }
 
     public OffsetDateTime getCriadoEm() {

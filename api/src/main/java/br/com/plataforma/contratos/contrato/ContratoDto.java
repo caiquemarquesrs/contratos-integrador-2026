@@ -29,9 +29,13 @@ public record ContratoDto(
         String origem,
         String origemModuloId,
         StatusContrato status,
-        Object assinatura,   // sempre null até a Tarefa 3 (assinar)
+        AssinaturaDto assinatura,   // null enquanto o contrato não foi assinado
         OffsetDateTime criadoEm,
         OffsetDateTime atualizadoEm) {
+
+    /** Quem assinou e quando (schema Assinatura do contratos.yaml). */
+    public record AssinaturaDto(OffsetDateTime assinadoEm, UUID assinadoPor) {
+    }
 
     public record ServicoDto(UUID itemCatalogoId, String descricao, BigDecimal quantidade,
                              BigDecimal valorUnitario, BigDecimal valorTotal) {
@@ -48,6 +52,7 @@ public record ContratoDto(
                 c.getValorMensal(), c.getMrr(), c.getDataInicio(), c.getVigenciaMeses(), c.getRenovacao(),
                 c.getReajusteAnualPercentual(), c.getIndiceReajuste(), c.getAvisoPrevioDias(),
                 c.getResponsavelId(), c.getOrigem(), c.getOrigemModuloId(), c.getStatus(),
-                null, c.getCriadoEm(), c.getAtualizadoEm());
+                c.getAssinadoEm() == null ? null : new AssinaturaDto(c.getAssinadoEm(), c.getAssinadoPor()),
+                c.getCriadoEm(), c.getAtualizadoEm());
     }
 }

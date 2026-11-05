@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
@@ -54,6 +55,15 @@ public class TratadorDeErros {
     ResponseEntity<Resposta<Void>> conflitoDeEstado(ConflitoDeEstadoException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Resposta.falha(e.getMessage(), List.of(e.getErro())));
+    }
+
+        /** Arquivo acima do limite do servidor: o contrato prevê 400 (DadosInvalidos), não 413. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<Resposta<Void>> arquivoGrandeDemais(MaxUploadSizeExceededException e) {
+        return ResponseEntity.badRequest()
+                .body(Resposta.falha("Não foi possível salvar: confira os campos.",
+                        List.of(new ErroCampo("arquivo", "ARQUIVO_GRANDE_DEMAIS",
+                                "O arquivo passa do tamanho máximo de 5 MB."))));
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})

@@ -1,9 +1,11 @@
 package br.com.plataforma.contratos.contrato;
 
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -14,6 +16,7 @@ import br.com.plataforma.contratos.api.CampoInvalidoException;
 import br.com.plataforma.contratos.api.ConflitoDeEstadoException;
 import br.com.plataforma.contratos.api.NaoEncontradoException;
 import br.com.plataforma.contratos.api.Pagina;
+import br.com.plataforma.contratos.eventos.FatoOcorrido;
 import br.com.plataforma.contratos.modelo.ModeloRepositorio;
 import br.com.plataforma.contratos.tenant.TenantContexto;
 import jakarta.persistence.EntityManager;
@@ -28,11 +31,14 @@ public class ContratoServico {
     private final ContratoRepositorio contratos;
     private final ModeloRepositorio modelos;
     private final EntityManager entityManager;
+    private final ApplicationEventPublisher eventos;
 
-    public ContratoServico(ContratoRepositorio contratos, ModeloRepositorio modelos, EntityManager entityManager) {
+    public ContratoServico(ContratoRepositorio contratos, ModeloRepositorio modelos, EntityManager entityManager,
+                           ApplicationEventPublisher eventos) {
         this.contratos = contratos;
         this.modelos = modelos;
         this.entityManager = entityManager;
+        this.eventos = eventos;
     }
 
     @Transactional
@@ -134,6 +140,15 @@ public class ContratoServico {
         Contrato contrato = obter(id);
         exigirStatus(contrato, StatusContrato.AGUARDANDO_ASSINATURA, "assinado");
         contrato.assinar(corpo.assinadoPor(), usuario);
+
+        // O Financeiro começa a cobrança recorrente a partir deste evento (contratos.asyncapi.yaml). O fato é
+        // registrado dentro da transação; o PublicadorDeEventos só o envia ao RabbitMQ depois do commit, então
+        // um 409, um 400 ou um rollback nunca publicam nada. "dados" tem só estes três campos.
+        eventos.publishEvent(new FatoOcorrido(
+                "contratos.contrato.assinado", contrato.getTenantId(), usuario,
+                Map.of("contratoId", contrato.getId(),
+                       "empresaId", contrato.getEmpresaId(),
+                       "valorMensal", contrato.getValorMensal().setScale(2, RoundingMode.UNNECESSARY))));
         return ContratoDto.de(contrato);
     }
 

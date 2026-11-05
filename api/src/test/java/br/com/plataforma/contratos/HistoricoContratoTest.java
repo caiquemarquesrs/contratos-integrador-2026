@@ -28,6 +28,11 @@ class HistoricoContratoTest extends BaseContratos {
                 .formatted(servico, valorMensal, RESPONSAVEL);
     }
 
+    /**
+     * Cria o contrato com a mesma empresa e o mesmo responsável que o {@code edicao(...)} usa. Nos testes
+     * de edição isso importa: com um responsável diferente, o PUT mudaria o responsável de verdade e o
+     * histórico registraria uma linha a mais (corretamente).
+     */
     private UUID criarComo(UUID tenant, UUID usuarioId) throws Exception {
         String resposta = mvc.perform(post(BASE)
                         .with(usuarioComId(tenant, usuarioId, CRIAR))
@@ -134,7 +139,7 @@ class HistoricoContratoTest extends BaseContratos {
     void editarMudandoOValorMensalRegistraExatamenteUmaLinhaComAnteriorENovo() throws Exception {
         UUID tenant = UUID.randomUUID();
         UUID editor = UUID.randomUUID();
-        UUID id = criarContrato(tenant);
+        UUID id = criarComo(tenant, UUID.randomUUID());
 
         mvc.perform(put(BASE + "/" + id)
                         .with(usuarioComId(tenant, editor, EDITAR))
@@ -153,7 +158,7 @@ class HistoricoContratoTest extends BaseContratos {
     @Test
     void editarMandandoOsMesmosValoresNaoRegistraNada() throws Exception {
         UUID tenant = UUID.randomUUID();
-        UUID id = criarContrato(tenant);
+        UUID id = criarComo(tenant, UUID.randomUUID());
 
         // 1500.0 (e não 1500.00) e o mesmo serviço: nada mudou de verdade
         mvc.perform(put(BASE + "/" + id)
@@ -169,7 +174,7 @@ class HistoricoContratoTest extends BaseContratos {
     @Test
     void mudarAListaDeServicosRegistraUmaLinhaSoComResumo() throws Exception {
         UUID tenant = UUID.randomUUID();
-        UUID id = criarContrato(tenant);
+        UUID id = criarComo(tenant, UUID.randomUUID());
         String outroServico = "{\"descricao\":\"Hospedagem\",\"quantidade\":3,"
                 + "\"valorUnitario\":150.00,\"valorTotal\":450.00}";
 
@@ -191,7 +196,7 @@ class HistoricoContratoTest extends BaseContratos {
     @Test
     void paginaOHistoricoETamanhoMaximoE100() throws Exception {
         UUID tenant = UUID.randomUUID();
-        UUID id = criarContrato(tenant);
+        UUID id = criarComo(tenant, UUID.randomUUID());
         // 4 edições, cada uma mudando o valor mensal: com a criação, são 5 linhas
         for (String valor : new String[] {"1600.00", "1700.00", "1800.00", "1900.00"}) {
             mvc.perform(put(BASE + "/" + id)

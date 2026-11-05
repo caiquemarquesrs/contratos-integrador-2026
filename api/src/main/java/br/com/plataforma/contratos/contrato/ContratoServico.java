@@ -32,13 +32,15 @@ public class ContratoServico {
     private final ModeloRepositorio modelos;
     private final EntityManager entityManager;
     private final ApplicationEventPublisher eventos;
+    private final HistoricoServico historico;
 
     public ContratoServico(ContratoRepositorio contratos, ModeloRepositorio modelos, EntityManager entityManager,
-                           ApplicationEventPublisher eventos) {
+                           ApplicationEventPublisher eventos, HistoricoServico historico) {
         this.contratos = contratos;
         this.modelos = modelos;
         this.entityManager = entityManager;
         this.eventos = eventos;
+        this.historico = historico;
     }
 
     @Transactional
@@ -50,7 +52,9 @@ public class ContratoServico {
         // fora desta transação. Vem nulo se o CRM não respondeu (§9.6).
         Contrato contrato = Contrato.novo(proximoNumero(), corpo.empresaId(), empresaNome, corpo.origem(),
                 corpo.origemModuloId(), corpo.dados(), usuario);
-        return ContratoDto.de(contratos.save(contrato));
+        Contrato salvo = contratos.save(contrato);
+        historico.registrar(salvo.getId(), "status", null, StatusContrato.RASCUNHO.name(), usuario);
+        return ContratoDto.de(salvo);
     }
 
     /** Ordenações aceitas em "ordenar". O id desempata, para a paginação não repetir nem perder itens. */
@@ -114,8 +118,18 @@ public class ContratoServico {
                     "Estado atual: " + contrato.getStatus() + ".");
         }
         conferirModelo(corpo.modeloId());
+        Contrato.Dados antes = contrato.dados();
         contrato.editar(corpo.dados(), usuario);
+        // uma linha por campo que mudou de verdade; editar sem mudar nada não registra nada
+        historico.registrar(id, ComparadorDeContrato.comparar(antes, contrato.dados()), usuario);
         return ContratoDto.de(contrato);
+    }
+
+    /** Histórico de mudanças, do mais recente para o mais antigo. 404 se o contrato não existir ou for de outra empresa. */
+    @Transactional(readOnly = true)
+    public Pagina<HistoricoDto> historico(UUID id, int pagina, int tamanho) {
+        obter(id);
+        return historico.listar(id, pagina, tamanho);
     }
 
     /**
@@ -126,7 +140,9 @@ public class ContratoServico {
     public ContratoDto aprovar(UUID id, UUID usuario) {
         Contrato contrato = obter(id);
         exigirStatus(contrato, StatusContrato.EM_APROVACAO, "aprovado");
+        StatusContrato anterior = contrato.getStatus();
         contrato.aprovar(usuario);
+        historico.registrar(id, "status", anterior.name(), contrato.getStatus().name(), usuario);
         return ContratoDto.de(contrato);
     }
 
@@ -139,7 +155,9 @@ public class ContratoServico {
     public ContratoDto assinar(UUID id, RegistroAssinatura corpo, UUID usuario) {
         Contrato contrato = obter(id);
         exigirStatus(contrato, StatusContrato.AGUARDANDO_ASSINATURA, "assinado");
+        StatusContrato anterior = contrato.getStatus();
         contrato.assinar(corpo.assinadoPor(), usuario);
+        historico.registrar(id, "status", anterior.name(), contrato.getStatus().name(), usuario);
 
         // O Financeiro começa a cobrança recorrente a partir deste evento (contratos.asyncapi.yaml). O fato é
         // registrado dentro da transação; o PublicadorDeEventos só o envia ao RabbitMQ depois do commit, então

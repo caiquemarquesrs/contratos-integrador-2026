@@ -166,6 +166,16 @@ public class Contrato implements Persistable<UUID> {
         aplicar(dados, usuario, OffsetDateTime.now(ZoneOffset.UTC));
     }
 
+    /** Cópia dos dados editáveis como estão agora; o histórico compara a cópia de antes com a de depois. */
+    public Dados dados() {
+        return new Dados(modeloId, valorMensal, mrr, dataInicio, vigenciaMeses, renovacao,
+                reajusteAnualPercentual, indiceReajuste, avisoPrevioDias, responsavelId,
+                servicos.stream()
+                        .map(s -> new DadosServico(s.getItemCatalogoId(), s.getDescricao(), s.getQuantidade(),
+                                s.getValorUnitario(), s.getValorTotal()))
+                        .toList());
+    }
+
     /** EM_APROVACAO -> AGUARDANDO_ASSINATURA. Quem chama já conferiu o estado de origem. */
     public void aprovar(UUID usuario) {
         this.status = StatusContrato.AGUARDANDO_ASSINATURA;

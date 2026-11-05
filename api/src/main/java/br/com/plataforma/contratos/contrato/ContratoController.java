@@ -73,6 +73,14 @@ public class ContratoController {
         return Resposta.ok(servico.editar(id, corpo, Usuarios.idDe(jwt)));
     }
 
+    @GetMapping("/{id}/historico")
+    @PreAuthorize("hasAuthority('contratos.contrato.ver')")
+    public Resposta<Pagina<HistoricoDto>> historico(@PathVariable UUID id,
+                                                    @RequestParam(defaultValue = "0") int pagina,
+                                                    @RequestParam(defaultValue = "20") int tamanho) {
+        return Resposta.ok(servico.historico(id, Math.max(pagina, 0), Math.clamp(tamanho, 1, 100)));
+    }
+
     @PostMapping("/{id}/aprovar")
     @PreAuthorize("hasAuthority('contratos.contrato.aprovar')")
     public Resposta<ContratoDto> aprovar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {

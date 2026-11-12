@@ -7,6 +7,14 @@ server:
 modulo:
   codigo: contratos
 
+recaptcha:
+  secret-key: ${RECAPTCHA_SECRET_KEY:}
+
+# Origens do navegador autorizadas a chamar a API: Vite (5173), Nginx do front (3004) e
+# plataforma/gateway (8080). Sobrescreva com CORS_ORIGENS se o ambiente mudar.
+cors:
+  origens-permitidas: ${CORS_ORIGENS:http://localhost:5173,http://localhost:3004,http://localhost:8080}
+
 spring:
   application:
     name: contratos

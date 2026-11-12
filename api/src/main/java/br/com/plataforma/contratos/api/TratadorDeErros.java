@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import br.com.plataforma.contratos.captcha.RecaptchaException;
+
 /** Converte toda exceção no envelope padrão, com o código HTTP da §8.4. */
 @RestControllerAdvice
 public class TratadorDeErros {
@@ -49,6 +51,13 @@ public class TratadorDeErros {
     ResponseEntity<Resposta<Void>> campoInvalido(CampoInvalidoException e) {
         return ResponseEntity.badRequest()
                 .body(Resposta.falha("Não foi possível salvar: confira os campos.", List.of(e.getErro())));
+    }
+
+    @ExceptionHandler(RecaptchaException.class)
+    ResponseEntity<Resposta<Void>> recaptchaInvalido(RecaptchaException e) {
+        return ResponseEntity.status(e.status())
+                .body(Resposta.falha(e.getMessage(),
+                        List.of(new ErroCampo("recaptcha", e.codigo(), e.getMessage()))));
     }
 
     @ExceptionHandler(ConflitoDeEstadoException.class)

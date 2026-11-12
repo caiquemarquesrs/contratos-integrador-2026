@@ -13,10 +13,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import br.com.plataforma.contratos.crm.ClienteCrm;
+import br.com.plataforma.contratos.captcha.RecaptchaVerifier;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.PostgreSQLContainer;
 
@@ -51,17 +53,28 @@ public abstract class BaseIntegracao {
     @MockitoBean
     protected ClienteCrm crm;
 
+    @MockitoBean
+    protected RecaptchaVerifier recaptcha;
+
     @Autowired
     protected MockMvc mvc;
 
     /** Token de usuário do tenant informado, com as permissões informadas. */
     protected static RequestPostProcessor usuario(UUID tenant, String... permissoes) {
-        return jwt()
+        return comRecaptchaValido(jwt()
                 .jwt(token -> token
                         .subject(UUID.randomUUID().toString())
                         .claim("tenant_id", tenant.toString())
                         .claim("perms", List.of(permissoes)))
-                .authorities(autoridades(permissoes));
+                .authorities(autoridades(permissoes)));
+    }
+
+    protected static RequestPostProcessor comRecaptchaValido(RequestPostProcessor autenticacao) {
+        return request -> {
+            MockHttpServletRequest autenticada = autenticacao.postProcessRequest(request);
+            autenticada.addHeader("X-Recaptcha-Token", "token-de-teste");
+            return autenticada;
+        };
     }
 
     /** Token de serviço: sub = svc:{modulo}, sem tenant_id. */

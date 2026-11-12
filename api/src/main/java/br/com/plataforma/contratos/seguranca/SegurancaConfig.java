@@ -1,7 +1,11 @@
 package br.com.plataforma.contratos.seguranca;
 
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -11,6 +15,9 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -31,6 +38,7 @@ public class SegurancaConfig {
                 (requisicao, resposta, excecao) -> erros.escrever(resposta, 403, "Sem permissão para esta operação.");
 
         http
+                .cors(Customizer.withDefaults())   // CorsFilter roda antes do filtro de autenticação: preflight não exige token
                 .csrf(csrf -> csrf.disable())   // token no cabeçalho, sem cookie: CSRF não se aplica
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(regras -> regras
@@ -56,5 +64,23 @@ public class SegurancaConfig {
         JwtAuthenticationConverter conversor = new JwtAuthenticationConverter();
         conversor.setJwtGrantedAuthoritiesConverter(permissoes);
         return conversor;
+    }
+
+    /**
+     * Origens autorizadas vêm de cors.origens-permitidas. X-Recaptcha-Token precisa estar liberado:
+     * o cadastro envia o token do CAPTCHA nesse cabeçalho, que o preflight barra se não for permitido.
+     */
+    @Bean
+    CorsConfigurationSource corsConfigurationSource(
+            @Value("${cors.origens-permitidas}") List<String> origensPermitidas) {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(origensPermitidas);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Recaptcha-Token"));
+        config.setExposedHeaders(List.of("Content-Disposition"));   // nome do arquivo no download
+        config.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource fonte = new UrlBasedCorsConfigurationSource();
+        fonte.registerCorsConfiguration("/**", config);
+        return fonte;
     }
 }

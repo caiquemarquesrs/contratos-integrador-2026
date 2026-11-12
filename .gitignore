@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+target/
+*.tsbuildinfo
+.vite/
+coverage/
+/front/vite.config.d.ts
+
+# Environment files (keep safe examples)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+
+# IDE
+.idea/
+.vscode/
+.classpath
+.project
+.settings/
+*.iml
+
+# Operating system
+.DS_Store
+Thumbs.db
+desktop.ini

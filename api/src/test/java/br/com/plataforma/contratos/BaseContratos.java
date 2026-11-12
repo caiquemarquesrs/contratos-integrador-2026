@@ -43,12 +43,12 @@ public abstract class BaseContratos extends BaseIntegracao {
         GrantedAuthority[] autoridades = Arrays.stream(permissoes)
                 .map(SimpleGrantedAuthority::new)
                 .toArray(GrantedAuthority[]::new);
-        return jwt()
+        return comRecaptchaValido(jwt()
                 .jwt(token -> token
                         .subject(usuarioId.toString())
                         .claim("tenant_id", tenant.toString())
                         .claim("perms", List.of(permissoes)))
-                .authorities(autoridades);
+                .authorities(autoridades));
     }
 
     /** JSON de criação com valores conhecidos, para os testes poderem repeti-los num PUT. */

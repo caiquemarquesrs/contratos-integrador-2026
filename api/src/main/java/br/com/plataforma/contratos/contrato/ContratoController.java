@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import br.com.plataforma.contratos.api.Pagina;
 import br.com.plataforma.contratos.api.Resposta;
+import br.com.plataforma.contratos.captcha.RecaptchaVerifier;
 import br.com.plataforma.contratos.crm.ClienteCrm;
 import br.com.plataforma.contratos.seguranca.Usuarios;
 import jakarta.validation.Valid;
@@ -32,10 +34,12 @@ public class ContratoController {
 
     private final ContratoServico servico;
     private final ClienteCrm crm;
+    private final RecaptchaVerifier recaptcha;
 
-    public ContratoController(ContratoServico servico, ClienteCrm crm) {
+    public ContratoController(ContratoServico servico, ClienteCrm crm, RecaptchaVerifier recaptcha) {
         this.servico = servico;
         this.crm = crm;
+        this.recaptcha = recaptcha;
     }
 
     @GetMapping
@@ -59,7 +63,10 @@ public class ContratoController {
     @PostMapping
     @PreAuthorize("hasAuthority('contratos.contrato.criar')")
     public ResponseEntity<Resposta<ContratoDto>> criar(@Valid @RequestBody NovoContrato corpo,
-                                                       @AuthenticationPrincipal Jwt jwt) {
+                                                       @AuthenticationPrincipal Jwt jwt,
+                                                       @RequestHeader(name = "X-Recaptcha-Token", required = false)
+                                                       String recaptchaToken) {
+        recaptcha.validar(recaptchaToken);
         String empresaNome = crm.razaoSocial(corpo.empresaId(), jwt.getTokenValue()).orElse(null);
         ContratoDto contrato = servico.criar(corpo, Usuarios.idDe(jwt), empresaNome);
         return ResponseEntity.created(URI.create("/api/contratos/contratos/" + contrato.id()))

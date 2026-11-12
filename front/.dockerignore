@@ -1,2 +1,12 @@
 node_modules/
 dist/
+.vite/
+target/
+*.tsbuildinfo
+vite.config.d.ts
+.env
+.env.*
+.git/
+.idea/
+*.iml
+*.log

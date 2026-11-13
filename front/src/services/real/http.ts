@@ -1,4 +1,4 @@
-import { avisarTokenExpirado, sessaoAtual } from "@/plataforma/sessao";
+import { aguardarTokenRenovado, sessaoAtual } from "@/plataforma/sessao";
 import type { ApiError } from "@/types/contratos";
 
 interface ApiEnvelope<T> {
@@ -15,9 +15,34 @@ export interface ApiPage<T> {
   total: number;
 }
 
-const BASE_URL = (
-  import.meta.env.VITE_API_URL ?? "http://localhost:8084/api"
-).replace(/\/+$/, "");
+/**
+ * Caminho relativo à própria origem: o navegador só conhece o gateway, que encaminha
+ * /api/contratos/** para a API do módulo (Contrato §3, §9.1 e §12.8). Uma URL absoluta para
+ * outra porta (ex.: localhost:8084) quebra dentro da casca: outra origem, CORS e sem gateway.
+ */
+const BASE_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
+
+/**
+ * Faz a chamada com o token atual. Num 401, avisa a casca (modulo:token-expirado), espera o
+ * token renovado e repete UMA vez. O módulo nunca renova token sozinho (Contrato §4.3).
+ */
+async function comToken(
+  path: string,
+  init: RequestInit,
+): Promise<Response> {
+  const enviar = (token: string | undefined) => {
+    const headers = new Headers(init.headers);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    return fetchApi(`${BASE_URL}${path}`, { ...init, headers });
+  };
+
+  const tokenUsado = sessaoAtual()?.token;
+  const response = await enviar(tokenUsado);
+  if (response.status !== 401) return response;
+
+  const renovado = await aguardarTokenRenovado(tokenUsado);
+  return renovado ? enviar(sessaoAtual()?.token) : response;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -100,8 +125,6 @@ async function request<T>(
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
 
-  const session = sessaoAtual();
-  if (session?.token) headers.set("Authorization", `Bearer ${session.token}`);
   if (
     options.body &&
     !(options.body instanceof FormData) &&
@@ -110,7 +133,7 @@ async function request<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetchApi(`${BASE_URL}${path}`, {
+  const response = await comToken(path, {
     ...options,
     method: options.method ?? "GET",
     headers,
@@ -119,7 +142,6 @@ async function request<T>(
   if (response.status === 204) return undefined as T;
 
   const body = await readJson(response);
-  if (response.status === 401) avisarTokenExpirado();
 
   if (!response.ok) throw toApiError(response.status, body);
   if (!isEnvelope<T>(body)) {
@@ -135,12 +157,8 @@ async function request<T>(
 async function baixar(
   path: string,
 ): Promise<{ blob: Blob; filename: string | null }> {
-  const headers = new Headers({ Accept: "*/*" });
-  const session = sessaoAtual();
-  if (session?.token) headers.set("Authorization", `Bearer ${session.token}`);
-
-  const response = await fetchApi(`${BASE_URL}${path}`, { headers });
-  if (response.status === 401) avisarTokenExpirado();
+  // Token no cabeçalho, nunca na URL (Contrato §8.2): o arquivo vem como blob pelo fetch.
+  const response = await comToken(path, { headers: { Accept: "*/*" } });
   if (!response.ok) {
     throw toApiError(response.status, await readJson(response));
   }

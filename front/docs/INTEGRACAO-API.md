@@ -1,5 +1,22 @@
 # Auditoria da integração com a API
 
+> **Atualização — integração com a casca (iframe).** As seções abaixo descrevem a auditoria
+> anterior. O que mudou na adequação ao Contrato de Integração v0.7
+> (`infra-integrador-2026/docs/contrato-de-integracao.md`, §3, §4, §8.2, §8.6, §9.1, §12.1, §12.2 e §12.8):
+>
+> | Antes | Agora |
+> |---|---|
+> | Modo padrão `mock`; a imagem Docker publicava dados simulados | Padrão `real`. `VITE_API_MODE=mock` só vale em modo direto; dentro do iframe é sempre a API real |
+> | `VITE_API_URL=http://localhost:8084/api` (outra origem, quebrava no iframe) | `/api`, na mesma origem do gateway (`/api/contratos/**`) |
+> | Vite: `/api` → `:8084`, `/api/identity` → `:8080` | Vite: todo `/api` → gateway (`VITE_GATEWAY`, padrão `http://localhost:8080`) |
+> | `iniciarSessao()` nunca era chamado: sem ouvinte, sem `modulo:pronto`, sem sessão | Chamado em `main.tsx` antes do render: ouvinte registrado **antes** de `modulo:pronto` |
+> | Sidebar, logotipo e cabeçalho global próprios em `App.tsx` | Removidos: menu, barra e login são da casca |
+> | Sem rotas; `/contratos/{id}` da busca global não abria nada | Rotas internas `/contratos` e `/contratos/{id}`, com `modulo:navegar` |
+> | `401` só avisava a casca | `401` → `modulo:token-expirado` (uma vez), espera `plataforma:token` e repete a chamada uma vez |
+> | `html/body/#root` com `height:100%`/`100vh` e rolagem interna | Altura do conteúdo, informada em `modulo:altura` (sobe e desce) |
+>
+> O protocolo completo está em [Integração com a casca](#integração-com-a-casca-iframe), no fim deste arquivo.
+
 Auditoria realizada sobre os controllers e DTOs atuais de `api/` e os serviços de `front/`. O front-end não altera o contrato nem o código Java. A API fake continua sendo o modo padrão.
 
 ## Configuração e autenticação
@@ -80,3 +97,44 @@ Respostas JSON seguem `{ success, data, message, errors }`; páginas seguem `{ i
 - A API recebe o token pelo cabeçalho `X-Recaptcha-Token` no `POST /api/contratos/contratos` e exige `success=true` do Google antes da consulta ao CRM e da persistência. `RECAPTCHA_SECRET_KEY` é lida somente pela API; sem ela, ou se o Google estiver indisponível, a criação falha sem persistir.
 - Para obter as chaves, crie no Google reCAPTCHA Admin Console um registro **reCAPTCHA v2 > Checkbox** e autorize o domínio `localhost` (sem porta). Configure a Site Key no front e a Secret Key como variável de ambiente da API. Não versionar nenhuma chave real.
 - A gravação real pelo formulário permanece bloqueada pelo desalinhamento de contrato já descrito na matriz acima. O CAPTCHA não remove essa proteção nem inventa campos de negócio; para o POST do front, a integração só poderá ser ligada após a decisão sobre os dados ausentes.
+
+## Integração com a casca (iframe)
+
+Referência: `infra-integrador-2026/docs/contrato-de-integracao.md` §12 e `exemplo-modulo/front/src/plataforma/sessao.ts`.
+Caminhos oficiais (`infra-integrador-2026/modulos/contratos.json`): front em `/modulos/contratos/`, API em `/api/contratos`.
+
+### Onde está cada coisa
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `src/plataforma/sessao.ts` | Único ponto que distingue modo direto × embutido. Ouvinte de `message`, validação de `event.origin` (= `window.location.origin`) e `event.source` (= `window.parent`), validação do formato das mensagens, sessão em memória fora do React, tema, altura, `modulo:*` |
+| `src/plataforma/rotas.ts` | Rotas internas relativas ao `urlFrontend` (`/contratos`, `/contratos/{id}`); envia `modulo:navegar` |
+| `src/plataforma/api.ts` | Login com usuário de teste — **só no modo direto** (Contrato §12 e §14.3) |
+| `src/main.tsx` | `iniciarSessao()` e `iniciarRotas()` antes do primeiro render |
+| `src/App.tsx` | Sem sessão: “Aguardando a sessão da plataforma” (embutido) ou login de teste (direto). Com sessão: as telas |
+| `src/services/real/http.ts` | `Authorization: Bearer` com o token atual; fluxo de `401` |
+
+### Ciclo de mensagens
+
+1. `main.tsx` → `iniciarSessao()`: registra o ouvinte, liga o `ResizeObserver` e **só então** envia `{ tipo: 'modulo:pronto' }` para `window.parent` com `targetOrigin = window.location.origin` (nunca `'*'`). Em modo direto nada é enviado.
+2. `plataforma:sessao` → guarda `token`, `tenantId`, `usuario` e `tema` em memória e aplica `data-tema` no `<html>`. Mensagem com formato inválido, de outra origem ou de outra janela é ignorada.
+3. `plataforma:tema` → atualiza `data-tema`. `plataforma:token` → troca o token usado pelo cliente HTTP.
+4. `401` da API → `modulo:token-expirado` (uma vez, mesmo com várias chamadas simultâneas), espera até 10 s por um token novo e repete a chamada uma vez. O módulo nunca renova token nem mostra login dentro da casca.
+5. `modulo:altura` → altura do `body` a cada mudança de conteúdo (ResizeObserver + `requestAnimationFrame`, sem repetir valor igual).
+6. `modulo:navegar` → rota relativa sem o código (`/contratos/9f1c…`). Embutido, o módulo usa `replaceState` e deixa o histórico com a casca; em modo direto usa `pushState`.
+7. `modulo:notificar` → enviado ao criar contrato. Mensagens de validação dos formulários continuam na própria tela.
+
+Nada da sessão é gravado em `localStorage`, `sessionStorage` ou cookie. O mock (só em modo direto, opt-in) ainda guarda **dados simulados** em `localStorage`, nunca token.
+
+### Modo direto (desenvolvimento)
+
+```bash
+cp .env.example .env    # VITE_API_MODE=real, VITE_GATEWAY=http://localhost:8080
+npm run dev             # http://localhost:5173/modulos/contratos/
+```
+
+Com o `docker compose` do `infra-integrador-2026` no ar, entre com um usuário de `docs/usuarios-de-teste.md`; o token real do identity de desenvolvimento fica só em memória. Para desenhar tela sem back-end, `VITE_API_MODE=mock` dispensa login.
+
+### Servidor e iframe
+
+`nginx/default.conf.template` serve o `dist/` em `/modulos/contratos/`, com fallback de SPA para `index.html` (recarregar `/modulos/contratos/contratos/{id}` funciona) e `Content-Security-Policy: frame-ancestors 'self'`. Não há `X-Frame-Options: DENY` nem `frame-ancestors 'none'`; o `X-Frame-Options: SAMEORIGIN` vem do gateway (Contrato §12.8).

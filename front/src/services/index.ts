@@ -19,8 +19,14 @@ import { clientesReal } from "@/services/real/clientes.real";
 import { historicoReal } from "@/services/real/historico.real";
 import { modelosReal } from "@/services/real/modelos.real";
 
+import { estaEmbutido } from "@/plataforma/sessao";
+
+/**
+ * Padrão: API real. O mock é opt-in (VITE_API_MODE=mock) e vale só em modo direto, para
+ * desenvolvimento de tela: dentro da casca o módulo nunca mostra dados simulados.
+ */
 export const API_MODE: "mock" | "real" =
-  import.meta.env.VITE_API_MODE === "real" ? "real" : "mock";
+  import.meta.env.VITE_API_MODE === "mock" && !estaEmbutido() ? "mock" : "real";
 
 const services: Services =
   API_MODE === "real"

@@ -34,3 +34,13 @@
 - CORS permanece dependência externa: autorizar a origem efetivamente usada (`http://localhost:5173` no Vite ou `http://localhost:3004` no container) no gateway/API.
 - O gateway também precisa expor `Content-Disposition` para o navegador permitir que o front use o nome do arquivo baixado.
 - `npm run typecheck`, `npm run build`, smoke test dos serviços mock e exercício dos adaptadores reais com HTTP simulado passaram. O servidor real em `localhost:8084` não estava acessível; portanto a integração real em runtime continua pendente.
+
+## Integração com a casca (iframe) — 2026-11-13
+
+| # | Área | Pendência | Situação | Quem decide/valida |
+|---|---|---|---|---|
+| 22 | Integração | Validar na casca real (staging ou `docker compose` do infra): handshake, sessão, tema, renovação de token, `modulo:altura`, `modulo:navegar` e `modulo:notificar` | Testado só com casca simulada na mesma origem (Chrome headless) | Grupo 2 / Grupo 5 |
+| 23 | Navegação | Submenus `/modelos` e `/documentos` do `modulos/contratos.json` não têm tela própria | Mostram aviso e link para Contratos; documentos ficam no detalhe do contrato | Grupo 5 |
+| 24 | Navegação | Comportamento do botão voltar depende de como a casca trata `modulo:navegar` | Embutido, o módulo usa `replaceState` e deixa o histórico com a casca | Grupo 2 |
+| 25 | Tema | Componentes usam cores fixas (`bg-white`, `text-slate-*`); o tema escuro só muda fundo/texto base | `data-tema` é aplicado; migrar para os tokens `fundo`/`superficie`/`texto` do tema oficial | Grupo 5 |
+| 26 | Docker | Imagem do front e cabeçalhos do nginx não foram testados em container nesta etapa | Configuração conferida por leitura (`frame-ancestors 'self'`, sem `DENY`) | Grupo 5 |

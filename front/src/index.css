@@ -1,44 +1,16 @@
 @import "tailwindcss";
+/* Tema oficial da plataforma (infra-integrador-2026/ui), com claro/escuro via data-tema (Contrato §12.3) */
+@import "./tema/plataforma.css";
 
-@theme {
-  /* Paleta Centinela — Navy + Verde-teal */
-  --color-brand-950: #0c1a2e;
-  --color-brand-900: #0f2340;
-  --color-brand-800: #0b6b4e;
-  --color-brand-700: #0d9b6e;
-  --color-brand-600: #10b981;
-  --color-brand-500: #22c55e;
-  --color-brand-400: #4ade80;
-  --color-brand-300: #86efac;
-  --color-brand-200: #bbf7d0;
-  --color-brand-100: #dcfce7;
-  --color-brand-50: #f0fdf4;
-
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
-
+/*
+ * Sem altura fixa (100%/100vh) em html, body ou #root: dentro do iframe, a altura do
+ * documento é a do conteúdo, e é ela que o módulo informa à casca em modulo:altura.
+ * Com 100vh, o conteúdo ficaria preso ao tamanho atual do iframe (cortado ou com rolagem dupla).
+ */
 html,
-body,
-#root {
-  height: 100%;
+body {
   margin: 0;
   padding: 0;
-}
-
-body {
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef4f8 100%);
-  color: #0f172a;
-}
-
-#root {
-  min-height: 100vh;
 }
 
 /* Scrollbar sutil */

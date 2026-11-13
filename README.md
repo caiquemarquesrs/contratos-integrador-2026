@@ -22,6 +22,8 @@ npm run build
 npm run dev
 ```
 
+O front é um módulo da plataforma: em produção ele roda dentro do iframe da casca, servido pelo gateway em `/modulos/contratos/`, e recebe sessão, token e tema por `postMessage`. Ele não tem menu, barra superior nem login próprios. Aberto direto (`http://localhost:5173/modulos/contratos/`), pede um usuário de teste do identity de desenvolvimento e encaminha `/api` ao gateway (`VITE_GATEWAY`). Detalhes em `front/docs/INTEGRACAO-API.md`, seção “Integração com a casca”.
+
 O servidor de desenvolvimento do Vite informa a URL local ao iniciar. `npm run build` também executa a verificação TypeScript antes de gerar os arquivos em `dist/`.
 
 O `package.json` ainda não define um script de testes automatizados para o front; a validação disponível é `npm run typecheck` e `npm run build`.

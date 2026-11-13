@@ -20,6 +20,8 @@ import { API_MODE } from "@/services";
 import { resetDB } from "@/services/mock/db";
 import { setForceErrors, getForceErrors } from "@/services/mock/helpers";
 import { useDebounce } from "@/hooks/useDebounce";
+import { navegar } from "@/plataforma/rotas";
+import { notificarCasca } from "@/plataforma/sessao";
 import {
   StatusContrato,
   STATUS_LABELS,
@@ -31,7 +33,11 @@ import {
 
 const PAGE_SIZE = 8;
 
-export function ContratosDocumentosPage() {
+/**
+ * `contratoId` vem da rota interna /contratos/{id} — a mesma rota da busca global (§8.6) e de
+ * modulo:navegar (§12.2). Abrir/fechar o detalhe atualiza a rota, e a rota abre o detalhe.
+ */
+export function ContratosDocumentosPage({ contratoId }: { contratoId?: string }) {
   const [search, setSearch] = useState("");
   const [clienteFiltro, setClienteFiltro] = useState("");
   const [statusFiltro, setStatusFiltro] = useState("");
@@ -45,6 +51,7 @@ export function ContratosDocumentosPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [detail, setDetail] = useState<Contrato | null>(null);
+  const [detailError, setDetailError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [forceErrors, setForceErrorsState] = useState(getForceErrors());
 
@@ -82,6 +89,47 @@ export function ContratosDocumentosPage() {
     load();
   }, [load]);
 
+  // Rota → detalhe: abre o contrato da URL (busca global, recarregar, voltar/avançar).
+  useEffect(() => {
+    if (!contratoId) {
+      setDetail(null);
+      return;
+    }
+    if (detail?.id === contratoId) return;
+    let ativo = true;
+    setDetailError("");
+    contratos
+      .obterPorId(contratoId)
+      .then((encontrado) => {
+        if (!ativo) return;
+        if (encontrado) setDetail(encontrado);
+        else {
+          setDetailError("Contrato não encontrado.");
+          navegar("/contratos", { substituir: true });
+        }
+      })
+      .catch((cause: unknown) => {
+        if (!ativo) return;
+        setDetailError(getErrorMessage(cause, "Erro ao abrir o contrato."));
+        navegar("/contratos", { substituir: true });
+      });
+    return () => {
+      ativo = false;
+    };
+    // `detail` fica fora das dependências de propósito: só a mudança de rota dispara a busca.
+  }, [contratoId]);
+
+  // Detalhe → rota
+  const abrirDetalhe = (contrato: Contrato) => {
+    setDetailError("");
+    setDetail(contrato);
+    navegar(`/contratos/${encodeURIComponent(contrato.id)}`);
+  };
+  const fecharDetalhe = () => {
+    setDetail(null);
+    navegar("/contratos");
+  };
+
   useEffect(() => {
     clientes.listar({}).then(setClientesList).catch((cause: unknown) => {
       setClientesError(getErrorMessage(cause, "Erro ao carregar clientes."));
@@ -100,7 +148,8 @@ export function ContratosDocumentosPage() {
       const novo = await contratos.criar(data, recaptchaToken);
       setShowForm(false);
       setPage(1);
-      setDetail(novo);
+      abrirDetalhe(novo);
+      notificarCasca("sucesso", `Contrato ${novo.numero} criado.`);
       load();
     } catch (e) {
       throw e;
@@ -123,7 +172,7 @@ export function ContratosDocumentosPage() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-gray-50">
+    <div className="flex flex-col bg-gray-50">
       <PageHeader
         title="Contratos e Documentos"
         description={`${total} contrato(s) encontrado(s)`}
@@ -208,13 +257,20 @@ export function ContratosDocumentosPage() {
         )}
       </FilterBar>
 
+      {detailError && (
+        <p role="alert" className="bg-red-50 px-5 py-2 text-xs text-red-700">
+          {detailError}
+        </p>
+      )}
+
       {clientesError && (
         <p className="bg-amber-50 px-5 py-2 text-xs text-amber-800">
           Integração de clientes indisponível: {clientesError}
         </p>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-white">
+      {/* Sem rolagem interna: a página cresce e a casca ajusta a altura do iframe (modulo:altura) */}
+      <div className="bg-white">
         {error ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <AlertCircle className="h-12 w-12 text-red-400" />
@@ -232,7 +288,7 @@ export function ContratosDocumentosPage() {
         ) : items.length === 0 ? (
           <ContratosEmptyState hasFilters={hasFilters} />
         ) : (
-          <ContratosTable items={items} onSelect={setDetail} />
+          <ContratosTable items={items} onSelect={abrirDetalhe} />
         )}
       </div>
 
@@ -263,14 +319,14 @@ export function ContratosDocumentosPage() {
       {/* Modal de detalhes */}
       <Modal
         open={!!detail}
-        onClose={() => setDetail(null)}
+        onClose={fecharDetalhe}
         size="xl"
         noPad
       >
         {detail && (
           <ContratoDetailPanel
             contrato={detail}
-            onClose={() => setDetail(null)}
+            onClose={fecharDetalhe}
             onUpdated={load}
           />
         )}

@@ -6,8 +6,13 @@ import {
   type TextareaHTMLAttributes,
   type ReactNode,
   useEffect,
+  useRef,
 } from "react";
 import { Search, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { estaEmbutido } from "@/plataforma/sessao";
+
+/** Altura mínima do documento com um modal aberto dentro do iframe, para o modal caber. */
+const ALTURA_MINIMA_COM_MODAL = "720px";
 
 // ============================================================================
 // Button
@@ -204,6 +209,8 @@ export function Modal({
   noPad = false,
   children,
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -218,6 +225,22 @@ export function Modal({
     };
   }, [open, onClose]);
 
+  // Dentro da casca o iframe tem a altura do conteúdo e quem rola é a página da casca.
+  // Garante altura para o modal caber e o traz para a área visível (mesma origem: a rolagem
+  // chega à janela da casca).
+  useEffect(() => {
+    if (!open || !estaEmbutido()) return;
+    const prevMin = document.body.style.minHeight;
+    document.body.style.minHeight = ALTURA_MINIMA_COM_MODAL;
+    const quadro = requestAnimationFrame(() =>
+      dialogRef.current?.scrollIntoView({ block: "center" }),
+    );
+    return () => {
+      cancelAnimationFrame(quadro);
+      document.body.style.minHeight = prevMin;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -228,6 +251,7 @@ export function Modal({
         aria-hidden
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         className={`relative z-10 flex max-h-[90vh] w-full ${MODAL_SIZES[size]} flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.18)]`}

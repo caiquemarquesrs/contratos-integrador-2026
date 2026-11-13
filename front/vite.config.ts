@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
 export default defineConfig({
+  base: "/modulos/contratos/",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -24,5 +25,6 @@ export default defineConfig({
     },
   },
 });
+
 
 

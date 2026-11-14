@@ -6,7 +6,9 @@ import type { ApiError, Cliente } from "@/types/contratos";
  * Integração com o CRM (contratos/crm.yaml no infra-integrador-2026), via gateway e com o
  * token do usuário logado. Permissão necessária: crm.empresa.ver_resumo (todo perfil operacional).
  *
- * - GET /api/crm/busca?q=texto            → razão social, nome fantasia ou CNPJ (2–100 chars, até 5)
+ * - GET /api/crm/busca?q=texto            → busca GLOBAL (empresas e contatos), 2–100 chars, até 5.
+ *   Itens: { id, titulo, subtitulo, rota }. Empresas têm rota "/empresas/{id}" e subtitulo
+ *   "CNPJ · Cidade/UF"; contatos (rota "/contatos/...") são descartados.
  * - GET /api/crm/empresas/{id}/resumo     → razão social, CNPJ e cidade
  * - GET /api/crm/empresas                 → lista paginada (crm.empresa.ver: só comercial/gestão)
  */
@@ -18,6 +20,14 @@ interface CrmEmpresa {
   cidade?: string | null;
   uf?: string | null;
   estado?: string | null;
+}
+
+/** Item da busca global do CRM. */
+interface CrmBuscaItem {
+  id: string;
+  titulo: string;
+  subtitulo?: string | null;
+  rota?: string | null;
 }
 
 const MIN_BUSCA = 2;
@@ -34,6 +44,20 @@ function paraCliente(e: CrmEmpresa): Cliente {
   };
 }
 
+/** Empresa vinda da busca global: nome em `titulo`; CNPJ e cidade/UF em `subtitulo`. */
+function buscaParaCliente(item: CrmBuscaItem): Cliente {
+  const [doc = "", local = ""] = (item.subtitulo ?? "").split(" · ");
+  const [cidade, uf] = local.split("/");
+  return {
+    id: item.id,
+    nome: item.titulo || "(sem nome)",
+    documento: doc.replace(/\D/g, ""),
+    tipo: "JURIDICA",
+    cidade: cidade?.trim() || undefined,
+    uf: uf?.trim() || undefined,
+  };
+}
+
 /** A API devolve array direto (busca/lote) ou página { itens } (lista completa). */
 function extrairLista(data: CrmEmpresa[] | { itens: CrmEmpresa[] } | null): CrmEmpresa[] {
   if (!data) return [];
@@ -45,10 +69,12 @@ export const clientesReal: ClientesService = {
     const termo = (filters.search ?? "").trim().slice(0, MAX_BUSCA);
 
     if (termo.length >= MIN_BUSCA) {
-      const data = await http.get<CrmEmpresa[] | { itens: CrmEmpresa[] }>(
+      const itens = await http.get<CrmBuscaItem[] | null>(
         `/crm/busca?${new URLSearchParams({ q: termo })}`,
       );
-      return extrairLista(data).map(paraCliente);
+      return (itens ?? [])
+        .filter((item) => item.rota?.startsWith("/empresas/"))
+        .map(buscaParaCliente);
     }
 
     // Sem termo (ex.: filtro de clientes da listagem): tenta a lista completa. Ela exige

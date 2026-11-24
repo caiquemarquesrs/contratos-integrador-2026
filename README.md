@@ -46,7 +46,27 @@ No [Google reCAPTCHA Admin Console](https://www.google.com/recaptcha/admin/creat
 
 O arquivo `front/.env.example` contém as variáveis públicas necessárias e não inclui chaves reais. Crie uma cópia local chamada `.env` e preencha a Site Key obtida no Google; arquivos `.env` são ignorados pelo Git. Para executar a API, injete `RECAPTCHA_SECRET_KEY` no ambiente do processo/container. Sem essa variável, o endpoint de criação falha fechado e não persiste contratos.
 
-A API exige o token no cabeçalho `X-Recaptcha-Token` e valida-o no endpoint oficial do Google antes de consultar o CRM ou persistir o contrato. A criação real pelo formulário continua bloqueada até que os campos da tela sejam alinhados ao DTO da API, conforme a auditoria em `front/docs/INTEGRACAO-API.md`.
+A API exige o token no cabeçalho `X-Recaptcha-Token` e valida-o no endpoint oficial do Google antes de consultar o CRM ou persistir o contrato.
+
+## Ciclo de vida do contrato
+
+O contrato nasce em `EM_APROVACAO` (decisão do Grupo 5): quem tem `contratos.contrato.aprovar` o leva a
+`AGUARDANDO_ASSINATURA`, e quem tem `contratos.contrato.assinar` o leva a `ATIVO`, publicando
+`contratos.contrato.assinado` para o Financeiro. Edição (`PUT`) só em `RASCUNHO` e `EM_APROVACAO`.
+
+## Rodar o sistema inteiro localmente
+
+Com o submódulo `infra-integrador-2026` e o Docker Desktop aberto (no Git Bash):
+
+```bash
+cd infra-integrador-2026
+scripts/gerar-env.sh            # só na primeira vez; preencha RECAPTCHA_SECRET_KEY no .env
+docker compose --profile plataforma --profile modulos up -d --build
+```
+
+Um `docker-compose.override.yml` local (fora do Git) faz `contratos` e `contratos-front` serem
+compilados de `../api` e `../front`; os outros módulos vêm das imagens publicadas. A plataforma
+fica em http://localhost:8080 (usuários em `infra-integrador-2026/docs/usuarios-de-teste.md`).
 
 ## Docker
 

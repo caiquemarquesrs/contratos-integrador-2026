@@ -57,6 +57,23 @@ class AprovarContratoTest extends BaseContratos {
     }
 
     @Test
+    void contratoRecemCriadoPodeSerAprovadoEAssinadoSemAjusteNoBanco() throws Exception {
+        UUID tenant = UUID.randomUUID();
+        UUID id = criarContrato(tenant);   // nasce EM_APROVACAO
+        assertEquals("EM_APROVACAO", statusNoBanco(id));
+
+        mvc.perform(post(BASE + "/" + id + "/aprovar").with(usuario(tenant, APROVAR)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("AGUARDANDO_ASSINATURA"));
+        mvc.perform(post(BASE + "/" + id + "/assinar")
+                        .with(usuario(tenant, ASSINAR))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"assinadoPor\":\"" + UUID.randomUUID() + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("ATIVO"));
+    }
+
+    @Test
     void emQualquerOutroEstadoResponde409ENaoMudaOEstado() throws Exception {
         UUID tenant = UUID.randomUUID();
         UUID id = criarContrato(tenant);

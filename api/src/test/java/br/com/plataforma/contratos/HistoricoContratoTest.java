@@ -89,7 +89,7 @@ class HistoricoContratoTest extends BaseContratos {
                 .andExpect(jsonPath("$.data.itens[0].contratoId").value(id.toString()))
                 .andExpect(jsonPath("$.data.itens[0].campo").value("status"))
                 .andExpect(jsonPath("$.data.itens[0].valorAnterior").value(Matchers.nullValue()))
-                .andExpect(jsonPath("$.data.itens[0].valorNovo").value("RASCUNHO"))
+                .andExpect(jsonPath("$.data.itens[0].valorNovo").value("EM_APROVACAO"))
                 .andExpect(jsonPath("$.data.itens[0].usuarioId").value(criador.toString()))
                 .andExpect(jsonPath("$.data.itens[0].ocorridoEm").exists());
     }
@@ -120,13 +120,14 @@ class HistoricoContratoTest extends BaseContratos {
                 .andExpect(jsonPath("$.data.itens[1].valorAnterior").value("EM_APROVACAO"))
                 .andExpect(jsonPath("$.data.itens[1].valorNovo").value("AGUARDANDO_ASSINATURA"))
                 .andExpect(jsonPath("$.data.itens[1].usuarioId").value(aprovador.toString()))
-                .andExpect(jsonPath("$.data.itens[2].valorNovo").value("RASCUNHO"));
+                .andExpect(jsonPath("$.data.itens[2].valorNovo").value("EM_APROVACAO"));
     }
 
     @Test
     void conflitoNaoRegistraNada() throws Exception {
         UUID tenant = UUID.randomUUID();
-        UUID id = criarContrato(tenant);   // RASCUNHO: aprovar dá 409
+        UUID id = criarContrato(tenant);
+        mudarStatus(id, "ATIVO");   // fora de EM_APROVACAO: aprovar dá 409
 
         mvc.perform(post(BASE + "/" + id + "/aprovar").with(usuario(tenant, APROVAR)))
                 .andExpect(status().isConflict());
@@ -214,7 +215,7 @@ class HistoricoContratoTest extends BaseContratos {
         mvc.perform(get(BASE + "/" + id + "/historico")
                         .param("pagina", "2").param("tamanho", "2").with(usuario(tenant, VER)))
                 .andExpect(jsonPath("$.data.itens.length()").value(1))
-                .andExpect(jsonPath("$.data.itens[0].valorNovo").value("RASCUNHO"));
+                .andExpect(jsonPath("$.data.itens[0].valorNovo").value("EM_APROVACAO"));
         mvc.perform(get(BASE + "/" + id + "/historico").param("tamanho", "500").with(usuario(tenant, VER)))
                 .andExpect(jsonPath("$.data.tamanho").value(100));
         mvc.perform(get(BASE + "/" + id + "/historico").with(usuario(tenant, VER)))

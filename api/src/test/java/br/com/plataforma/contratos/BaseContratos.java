@@ -18,9 +18,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.jayway.jsonpath.JsonPath;
 
 /**
- * Apoio dos testes do ciclo de vida do contrato (aprovar, assinar, histórico). O contrato não tem rota
- * que leve RASCUNHO a EM_APROVACAO (decisão do grupo: não alterar a infra), então o teste coloca o
- * contrato no estado de que precisa direto no banco.
+ * Apoio dos testes do ciclo de vida do contrato (aprovar, assinar, histórico). O contrato nasce em
+ * EM_APROVACAO; quando o teste precisa de outro estado, coloca o contrato nele direto no banco.
  */
 public abstract class BaseContratos extends BaseIntegracao {
 
@@ -61,7 +60,7 @@ public abstract class BaseContratos extends BaseIntegracao {
                 .formatted(empresa, SERVICO, responsavel);
     }
 
-    /** Cria um contrato (nasce RASCUNHO) e devolve o id. */
+    /** Cria um contrato (nasce EM_APROVACAO) e devolve o id. */
     protected UUID criarContrato(UUID tenant) throws Exception {
         return criarContratoComo(tenant, UUID.randomUUID());
     }

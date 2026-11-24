@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * Chama o CRM direto, pelo nome do serviço na rede interna, sem passar pelo gateway (Contrato §9.1).
  * O endereço vem da configuração (variável CRM_BASE_URL); o padrão é o nome do container do compose.
- * Timeout padrão de 1,5 segundo (limite do contrato: 3 s, §9.6). O nome da empresa é opcional, então
+ * Timeout padrão de 1 segundo (limite do contrato: 3 s, §9.6; o reCAPTCHA já usa até 1,2 s antes). O nome da empresa é opcional, então
  * o contrato não espera o CRM além disso: o gateway corta a requisição em cerca de 3 s, e a criação
  * precisa terminar antes disso mesmo com o CRM lento ou fora do ar. Nenhuma exceção para fora.
  */
@@ -34,7 +34,7 @@ public class ClienteCrmHttp implements ClienteCrm {
     private final ObjectMapper mapper;
 
     public ClienteCrmHttp(@Value("${crm.base-url:http://crm:8082}") String baseUrl,
-                          @Value("${crm.timeout-ms:1500}") long timeoutMs,
+                          @Value("${crm.timeout-ms:1000}") long timeoutMs,
                           ObjectMapper mapper) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.timeout = Duration.ofMillis(timeoutMs);

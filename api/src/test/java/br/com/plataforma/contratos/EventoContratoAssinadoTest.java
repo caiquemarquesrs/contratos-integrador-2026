@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -51,20 +52,30 @@ class EventoContratoAssinadoTest extends BaseContratos {
         assertThat(evento.id()).isNotNull();
         assertThat(evento.ocorridoEm()).isNotNull();
 
-        // "dados" tem exatamente estas três chaves, e mais nada
+        // "dados" tem exatamente estas chaves, e mais nada
         @SuppressWarnings("unchecked")
         Map<String, Object> dados = (Map<String, Object>) evento.dados();
-        assertThat(dados).containsOnlyKeys("contratoId", "empresaId", "valorMensal");
+        assertThat(dados).containsOnlyKeys("contratoId", "empresaId", "valorMensal", "itens");
         assertThat(dados.get("contratoId")).isEqualTo(id);
         assertThat(dados.get("empresaId")).isEqualTo(empresa);
         assertThat((BigDecimal) dados.get("valorMensal")).isEqualByComparingTo("1500.00");
         assertThat(((BigDecimal) dados.get("valorMensal")).scale()).isEqualTo(2);
+
+        // itens: o formato que o Financeiro lê para criar a regra de recorrência (financeiro.asyncapi.yaml)
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> itens = (List<Map<String, Object>>) dados.get("itens");
+        assertThat(itens).hasSize(1);
+        assertThat(itens.get(0)).containsOnlyKeys("servicoId", "descricao", "quantidade", "unidade", "valorUnitario", "franquia");
+        assertThat(itens.get(0).get("servicoId")).isNotNull();   // o Financeiro descarta item sem servicoId
+        assertThat(itens.get(0).get("descricao")).isEqualTo("Hospedagem");
+        assertThat((BigDecimal) itens.get(0).get("quantidade")).isEqualByComparingTo("2");
+        assertThat((BigDecimal) itens.get(0).get("valorUnitario")).isEqualByComparingTo("150.00");
     }
 
     @Test
     void assinarEmEstadoErradoNaoPublicaNada() throws Exception {
         UUID tenant = UUID.randomUUID();
-        UUID id = criarContrato(tenant);   // RASCUNHO: não pode ser assinado
+        UUID id = criarContrato(tenant);   // nasce EM_APROVACAO: ainda não pode ser assinado
 
         mvc.perform(post(BASE + "/" + id + "/assinar")
                         .with(usuario(tenant, ASSINAR))

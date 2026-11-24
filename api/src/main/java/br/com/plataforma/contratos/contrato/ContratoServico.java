@@ -2,6 +2,8 @@ package br.com.plataforma.contratos.contrato;
 
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -53,7 +55,7 @@ public class ContratoServico {
         Contrato contrato = Contrato.novo(proximoNumero(), corpo.empresaId(), empresaNome, corpo.origem(),
                 corpo.origemModuloId(), corpo.dados(), usuario);
         Contrato salvo = contratos.save(contrato);
-        historico.registrar(salvo.getId(), "status", null, StatusContrato.RASCUNHO.name(), usuario);
+        historico.registrar(salvo.getId(), "status", null, StatusContrato.EM_APROVACAO.name(), usuario);
         return ContratoDto.de(salvo);
     }
 
@@ -134,7 +136,7 @@ public class ContratoServico {
 
     /**
      * EM_APROVACAO -> AGUARDANDO_ASSINATURA. Em qualquer outro estado a resposta é 409.
-     * A transição RASCUNHO -> EM_APROVACAO não existe no contratos.yaml (decisão do grupo: não alterar a infra).
+     * O contrato já nasce em EM_APROVACAO, então pode ser aprovado logo depois de criado.
      */
     @Transactional
     public ContratoDto aprovar(UUID id, UUID usuario) {
@@ -161,13 +163,35 @@ public class ContratoServico {
 
         // O Financeiro começa a cobrança recorrente a partir deste evento (contratos.asyncapi.yaml). O fato é
         // registrado dentro da transação; o PublicadorDeEventos só o envia ao RabbitMQ depois do commit, então
-        // um 409, um 400 ou um rollback nunca publicam nada. "dados" tem só estes três campos.
+        // um 409, um 400 ou um rollback nunca publicam nada.
         eventos.publishEvent(new FatoOcorrido(
                 "contratos.contrato.assinado", contrato.getTenantId(), usuario,
                 Map.of("contratoId", contrato.getId(),
                        "empresaId", contrato.getEmpresaId(),
-                       "valorMensal", contrato.getValorMensal().setScale(2, RoundingMode.UNNECESSARY))));
+                       "valorMensal", contrato.getValorMensal().setScale(2, RoundingMode.UNNECESSARY),
+                       "itens", itensDoEvento(contrato))));
         return ContratoDto.de(contrato);
+    }
+
+    /**
+     * Serviços do contrato no formato que o Financeiro lê para montar a regra de recorrência
+     * (financeiro.asyncapi.yaml: servicoId, descricao, quantidade, unidade, valorUnitario, franquia).
+     * O Financeiro descarta item sem servicoId, então ele vai sempre preenchido: o item do catálogo de
+     * Produtos quando existe, senão o id da própria linha do serviço contratado (estável enquanto o
+     * contrato não é editado, e o contrato ATIVO não aceita edição). O Contratos não guarda unidade nem
+     * franquia: vão nulos, e o Financeiro usa os padrões dele.
+     */
+    private static List<Map<String, Object>> itensDoEvento(Contrato contrato) {
+        return contrato.getServicos().stream().map(servico -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("servicoId", servico.getItemCatalogoId() != null ? servico.getItemCatalogoId() : servico.getId());
+            item.put("descricao", servico.getDescricao());
+            item.put("quantidade", servico.getQuantidade());
+            item.put("unidade", null);
+            item.put("valorUnitario", servico.getValorUnitario().setScale(2, RoundingMode.UNNECESSARY));
+            item.put("franquia", null);
+            return item;
+        }).toList();
     }
 
     /** 409 no formato do exemplo ConflitoDeEstado do contratos.yaml. */

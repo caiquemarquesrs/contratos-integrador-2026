@@ -93,7 +93,7 @@ class ContratosTest extends BaseIntegracao {
     // ---------------------------------------------------------------- criar e ver
 
     @Test
-    void criaOContratoComoRascunhoNoFormatoDoContrato() throws Exception {
+    void criaOContratoEmAprovacaoNoFormatoDoContrato() throws Exception {
         UUID tenant = UUID.randomUUID();
         UUID empresa = UUID.randomUUID();
 
@@ -104,7 +104,7 @@ class ContratosTest extends BaseIntegracao {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", startsWith(BASE + "/")))
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.status").value("RASCUNHO"))
+                .andExpect(jsonPath("$.data.status").value("EM_APROVACAO"))
                 .andExpect(jsonPath("$.data.numero").value(matchesPattern("CT-\\d{4}-\\d{6}")))
                 .andExpect(jsonPath("$.data.empresaId").value(empresa.toString()))
                 .andExpect(jsonPath("$.data.empresaNome").value(nullValue()))
@@ -155,7 +155,7 @@ class ContratosTest extends BaseIntegracao {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(id))
                 .andExpect(jsonPath("$.data.empresaId").value(empresa.toString()))
-                .andExpect(jsonPath("$.data.status").value("RASCUNHO"))
+                .andExpect(jsonPath("$.data.status").value("EM_APROVACAO"))
                 .andExpect(jsonPath("$.data.valorMensal").value(1500.00))
                 .andExpect(jsonPath("$.data.mrr").value(1500.00))
                 .andExpect(jsonPath("$.data.dataInicio").value("2026-01-15"))
@@ -345,7 +345,7 @@ class ContratosTest extends BaseIntegracao {
                 .andExpect(jsonPath("$.data.empresaId").value(empresa.toString()))
                 .andExpect(jsonPath("$.data.origem").value("crm"))
                 .andExpect(jsonPath("$.data.origemModuloId").value("OPP-123"))
-                .andExpect(jsonPath("$.data.status").value("RASCUNHO"))
+                .andExpect(jsonPath("$.data.status").value("EM_APROVACAO"))
                 .andExpect(jsonPath("$.data.servicosContratados.length()").value(1))
                 .andExpect(jsonPath("$.data.servicosContratados[0].descricao").value("Backup"));
 
@@ -464,7 +464,7 @@ class ContratosTest extends BaseIntegracao {
         mvc.perform(get(BASE).param("status", "ATIVO").with(usuario(tenant, VER)))
                 .andExpect(jsonPath("$.data.total").value(1))
                 .andExpect(jsonPath("$.data.itens[0].id").value(ativo));
-        mvc.perform(get(BASE).param("status", "RASCUNHO").with(usuario(tenant, VER)))
+        mvc.perform(get(BASE).param("status", "EM_APROVACAO").with(usuario(tenant, VER)))
                 .andExpect(jsonPath("$.data.total").value(1))
                 .andExpect(jsonPath("$.data.itens[0].id").value(not(ativo)));
         mvc.perform(get(BASE).param("empresaId", cliente.toString()).with(usuario(tenant, VER)))

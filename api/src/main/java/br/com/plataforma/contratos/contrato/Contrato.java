@@ -153,7 +153,7 @@ public class Contrato implements Persistable<UUID> {
         contrato.empresaNome = empresaNome;
         contrato.origem = origem;
         contrato.origemModuloId = origemModuloId;
-        contrato.status = StatusContrato.RASCUNHO;
+        contrato.status = StatusContrato.EM_APROVACAO;   // nasce pronto para aprovação (decisão do Grupo 5)
         contrato.criadoEm = agora;
         contrato.criadoPor = usuario;
         contrato.novo = true;

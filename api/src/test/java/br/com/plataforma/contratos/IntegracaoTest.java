@@ -32,7 +32,7 @@ import com.jayway.jsonpath.JsonPath;
 /**
  * Tarefa 5: busca, resumo e status contratual (todos GET). Cobre segurança (401, 403, token de
  * serviço), isolamento por empresa e as regras de cada um dos cinco endpoints. O contrato nasce
- * como RASCUNHO pelo POST; quando o teste precisa de outro estado, o JdbcTemplate ajusta a linha.
+ * como EM_APROVACAO pelo POST; quando o teste precisa de outro estado, o JdbcTemplate ajusta a linha.
  */
 class IntegracaoTest extends BaseIntegracao {
 
@@ -161,7 +161,7 @@ class IntegracaoTest extends BaseIntegracao {
                 .andExpect(jsonPath("$.data.id").value(criado.id()))
                 .andExpect(jsonPath("$.data.numero").value(criado.numero()))
                 .andExpect(jsonPath("$.data.empresaNome").value("Centinela Digital Ltda"))
-                .andExpect(jsonPath("$.data.status").value("RASCUNHO"))
+                .andExpect(jsonPath("$.data.status").value("EM_APROVACAO"))
                 .andExpect(jsonPath("$.data.valorMensal").value(1500.00))
                 .andExpect(jsonPath("$.data.vigenciaFimPrevista").value("2027-01-15"))
                 .andExpect(jsonPath("$.data.tenantId").doesNotExist())
@@ -442,7 +442,7 @@ class IntegracaoTest extends BaseIntegracao {
     @Test
     void contratoQueAindaNaoEVigenteNaoContaParaOStatus() throws Exception {
         UUID tenant = UUID.randomUUID();
-        Criado rascunho = criar(tenant, "Rascunho Ltda");   // nasce RASCUNHO
+        Criado rascunho = criar(tenant, "Rascunho Ltda");   // nasce EM_APROVACAO, ainda não vigente
         Criado cancelado = criar(tenant, "Cancelado Ltda");
         definir(cancelado, "CANCELADO", LocalDate.now().plusDays(365));
 

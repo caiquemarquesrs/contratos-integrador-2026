@@ -304,19 +304,23 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
         <div className="md:col-span-2 space-y-2">
           {form.servicos.map((s, i) => (
             <div key={i} className="flex gap-2">
-              <Input
-                value={s.nome}
-                onChange={(e) => updServico(i, "nome", e.target.value)}
-                placeholder="Nome do serviço"
-                className="flex-1"
-              />
-              <Input
-                value={s.valor}
-                onChange={(e) => updServico(i, "valor", e.target.value)}
-                placeholder="Valor (R$)"
-                type="number"
-                className="w-32"
-              />
+              {/* wrapper com min-w-0: o Input tem w-full e, sem isso, o flex encolhe o campo a ~30px */}
+              <div className="min-w-0 flex-1">
+                <Input
+                  value={s.nome}
+                  onChange={(e) => updServico(i, "nome", e.target.value)}
+                  placeholder="Nome do serviço"
+                />
+              </div>
+              {/* largura fixa no wrapper: o className do Input não vence o w-full da base */}
+              <div className="w-32 shrink-0">
+                <Input
+                  value={s.valor}
+                  onChange={(e) => updServico(i, "valor", e.target.value)}
+                  placeholder="Valor (R$)"
+                  type="number"
+                />
+              </div>
               <Button
                 type="button"
                 variant="outline"

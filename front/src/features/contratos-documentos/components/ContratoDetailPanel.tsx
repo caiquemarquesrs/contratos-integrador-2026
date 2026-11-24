@@ -162,12 +162,21 @@ export function ContratoDetailPanel({ contrato, onClose, onUpdated }: ContratoDe
           </div>
           <div className="flex items-center gap-2">
             <ContratoStatusBadge status={current.status} />
-            <Button variant="secondary" size="sm" onClick={() => { setNovoStatus(current.status); setStatusError(""); setShowStatusModal(true); }}>
+            <Button variant="secondary" size="sm" onClick={() => {
+                const opcoes = getAvailableStatuses(current.status, API_MODE === "real");
+                // começa na primeira opção válida: sem isso, o select mostra uma opção que não foi escolhida
+                setNovoStatus(opcoes[0] ?? current.status);
+                setStatusError("");
+                setShowStatusModal(true);
+              }}>
               <ArrowRightLeft className="h-3 w-3" /> Alterar Status
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-              <Pencil className="h-3 w-3" /> Editar
-            </Button>
+            {/* real: a API só edita RASCUNHO e EM_APROVACAO; o botão some nos demais estados */}
+            {(API_MODE === "mock" || ["RASCUNHO", "EM_APROVACAO"].includes(current.status)) && (
+              <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="h-3 w-3" /> Editar
+              </Button>
+            )}
             <button
               onClick={onClose}
               className="rounded-lg p-1.5 text-brand-300 hover:bg-brand-800 hover:text-white"

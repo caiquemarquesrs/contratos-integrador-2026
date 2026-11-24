@@ -28,8 +28,15 @@ export function formatBRL(value: number | null | undefined): string {
   return BRL_FORMATTER.format(value);
 }
 
+/** Data sem horário (AAAA-MM-DD): new Date() leria como meia-noite UTC e mostraria o dia anterior no Brasil. */
+const SOMENTE_DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "—";
+  if (typeof value === "string" && SOMENTE_DATA.test(value)) {
+    const [, ano, mes, dia] = SOMENTE_DATA.exec(value)!;
+    return DATE_FORMATTER.format(new Date(Number(ano), Number(mes) - 1, Number(dia)));
+  }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return DATE_FORMATTER.format(date);

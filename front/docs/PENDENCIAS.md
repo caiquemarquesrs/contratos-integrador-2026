@@ -1,5 +1,10 @@
 # Pendências — Módulo Contratos e Documentos
 
+> **Atualização 2026-11-24:** cadastro e edição reais estão habilitados (itens 6, 7, 12, 18 e 21
+> resolvidos: serviços vão com quantidade 1, o responsável é o usuário logado na criação e mantido
+> na edição, e o reajuste usa IPCA/IGPM/INPC/nenhum). O contrato nasce em `EM_APROVACAO`, então os
+> itens 3 e 4 também deixam de bloquear: aprovar e assinar funcionam a partir da criação.
+
 > Atualizado em 2026-11-09 após auditoria de integração. O modo mock segue implementado; as limitações do modo real estão discriminadas abaixo.
 
 | # | Tela/área afetada | Pendência | Solução provisória adotada | Quem decide |

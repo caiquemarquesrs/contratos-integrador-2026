@@ -130,7 +130,7 @@ export function ContratoDetailPanel({ contrato, onClose, onUpdated }: ContratoDe
             setSubmitting(true);
             setEditError(null);
             try {
-              const updated = await contratos.atualizar(current.id, data);
+              const updated = await contratos.atualizar(current.id, { ...data, responsavelId: current.responsavelId });
               setCurrent(updated);
               setEditing(false);
               onUpdated();

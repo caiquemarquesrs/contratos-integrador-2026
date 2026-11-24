@@ -60,7 +60,7 @@ function emptyForm(): FormState {
     responsavel: "",
     assinaturaStatus: "PENDENTE",
     modeloId: "",
-    status: StatusContrato.RASCUNHO,
+    status: StatusContrato.EM_APROVACAO,
     servicos: [{ nome: "", valor: "" }],
   };
 }
@@ -101,7 +101,8 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
     return {
       numero: initial.numero,
       clienteId: initial.clienteId,
-      valor: initial.valor ?? 0,
+      // a API real devolve valorMensal; o mock usa valor
+      valor: initial.valor ?? initial.valorMensal ?? 0,
       mrr: initial.mrr,
       dataInicio: initial.dataInicio.slice(0, 10),
       vigenciaMeses: initial.vigenciaMeses,
@@ -133,6 +134,8 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
   const [submitError, setSubmitError] = useState("");
 
   const isEdit = !!initial;
+  /** Na API real, empresa, status e assinatura não mudam pelo PUT: aparecem só para leitura. */
+  const somenteLeituraReal = API_MODE === "real" && isEdit;
 
   // Estado inicial serializado para comparação de dirty
   const initialSnapshot = useMemo(() => JSON.stringify(form), []);
@@ -210,7 +213,7 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
       if (isApiError(e) && e.fieldErrors) {
         setServerErrors(e.fieldErrors);
       }
-      setSubmitError(getErrorMessage(e, "Erro ao criar contrato."));
+      setSubmitError(getErrorMessage(e, isEdit ? "Erro ao salvar contrato." : "Erro ao criar contrato."));
       if (!isEdit) {
         setRecaptchaToken(null);
         setRecaptchaResetKey((current) => current + 1);
@@ -223,9 +226,10 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
 
   return (
     <div className="space-y-2">
-      {API_MODE === "real" && isEdit && (
-        <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-          A edição ainda não está habilitada no modo real. Nenhum dado será gravado.
+      {somenteLeituraReal && (
+        <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+          Só contratos em Rascunho ou Em Aprovação podem ser editados. Cliente e status não mudam por aqui:
+          o status muda pelo botão “Alterar Status”.
         </div>
       )}
       <FormSection number={1} title="Identificação">
@@ -244,12 +248,12 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
         </FormField>
         <FormField
           label="Status"
-          hint={API_MODE === "real" && !isEdit ? "Novos contratos começam em Rascunho." : undefined}
+          hint={API_MODE === "real" && !isEdit ? "Novos contratos começam Em Aprovação." : undefined}
         >
           <Select
             value={form.status}
             onChange={(e) => upd("status", e.target.value as StatusContrato)}
-            disabled={API_MODE === "real" && !isEdit}
+            disabled={API_MODE === "real"}
           >
             {Object.values(StatusContrato).map((s) => (
               <option key={s} value={s}>{STATUS_LABELS[s]}</option>
@@ -257,23 +261,27 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
           </Select>
         </FormField>
         <FormField label="Cliente" required error={fieldErr("clienteId") || clienteError} colSpan={2}>
-          <ClienteSelector
-            value={cliente}
-            onChange={(c) => {
-              setCliente(c);
-              upd("clienteId", c?.id ?? "");
-            }}
-            required
-          />
+          {somenteLeituraReal ? (
+            <Input value={cliente?.nome ?? initial?.clienteNome ?? ""} disabled />
+          ) : (
+            <ClienteSelector
+              value={cliente}
+              onChange={(c) => {
+                setCliente(c);
+                upd("clienteId", c?.id ?? "");
+              }}
+              required
+            />
+          )}
         </FormField>
         <FormField
           label="Responsável"
           required={API_MODE === "mock"}
           error={fieldErr("responsavel")}
-          hint={API_MODE === "real" ? "Registrado como o usuário logado." : undefined}
+          hint={API_MODE === "real" ? (isEdit ? "Mantido o responsável atual." : "Registrado como o usuário logado.") : undefined}
         >
           <Input
-            value={API_MODE === "real" ? "Usuário logado" : form.responsavel}
+            value={API_MODE === "real" ? (isEdit ? "Responsável atual" : "Usuário logado") : form.responsavel}
             onChange={(e) => upd("responsavel", e.target.value)}
             placeholder="Nome do responsável"
             disabled={API_MODE === "real"}
@@ -327,7 +335,11 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
             <p className="text-sm text-red-600">{fieldErr("servicos")}</p>
           )}
         </div>
-        <FormField label="Valor total (R$)" required error={fieldErr("valor")}>
+        <FormField
+          label={API_MODE === "real" ? "Valor mensal (R$)" : "Valor total (R$)"}
+          required
+          error={fieldErr("valor") || serverErrors.valorMensal}
+        >
           <Input
             type="number"
             value={form.valor}
@@ -404,6 +416,7 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
           <Select
             value={form.assinaturaStatus}
             onChange={(e) => upd("assinaturaStatus", e.target.value as never)}
+            disabled={API_MODE === "real"}
           >
             <option value="PENDENTE">Pendente</option>
             <option value="ASSINADO">Assinado</option>
@@ -431,7 +444,7 @@ export function ContratoForm({ initial, onSubmit, onCancel, submitting }: Contra
         <Button
           onClick={handleSubmit}
           loading={submitting}
-          disabled={submitting || (isEdit && API_MODE === "real") || (!isEdit && !recaptchaToken)}
+          disabled={submitting || (!isEdit && !recaptchaToken)}
         >
           {isEdit ? "Salvar alterações" : "Criar contrato"}
         </Button>

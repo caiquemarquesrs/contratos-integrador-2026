@@ -126,7 +126,8 @@ export type ContratoCreateInput = Omit<
   | "reajusteAnualPercentual"
 > & { valor: number; reajusteAnualPercentual?: number };
 
-export type ContratoUpdateInput = Partial<ContratoCreateInput>;
+/** Na edição real, o responsável é mantido: a tela não troca o responsavelId do contrato. */
+export type ContratoUpdateInput = Partial<ContratoCreateInput> & { responsavelId?: string };
 
 export interface AlterarStatusInput {
   status: StatusContrato;

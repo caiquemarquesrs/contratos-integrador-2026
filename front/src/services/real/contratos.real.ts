@@ -98,16 +98,6 @@ function fromApi(contract: ApiContrato): Contrato {
   };
 }
 
-function incompatibilidadeDeGravacao(): never {
-  throw {
-    code: "INTEGRATION_CONTRACT_MISMATCH",
-    message:
-      "A edição real está bloqueada: a API exige responsávelId UUID e quantidade dos serviços, " +
-      "enquanto a tela mantém responsável textual e serviços sem quantidade. Alinhe os campos " +
-      "com o grupo responsável antes de gravar.",
-  };
-}
-
 /** Renovação: a tela usa maiúsculas; a API usa minúsculas, com "sem_renovacao". */
 const RENOVACAO_PARA_API = {
   AUTOMATICA: "automatica",
@@ -124,13 +114,25 @@ const RENOVACAO_PARA_API = {
  * - avisoPrevioDias ← campo da tela (sem preenchimento, fica 0);
  * - cada serviço vira quantidade 1, com valor unitário e total iguais ao valor informado;
  * - reajuste ← índice escolhido (IPCA, IGP-M, INPC ou nenhum) e percentual anual opcional;
- * - número e status não são enviados: a API gera o número e começa em RASCUNHO.
+ * - número e status não são enviados: a API gera o número e o contrato nasce em EM_APROVACAO.
  * Os valores não são arredondados: a API rejeita mais de 2 casas com PRECISAO_EXCEDIDA.
  */
 function corpoDoNovoContrato(input: ContratoCreateInput) {
   return {
     empresaId: input.clienteId,
-    modeloId: input.modeloId ?? null,
+    ...dadosEditaveis(input, idDoUsuarioAtual()),
+    origem: "contratos",
+    origemModuloId: `form-novo-contrato-${crypto.randomUUID()}`,
+  };
+}
+
+/**
+ * Campos comuns ao NovoContrato e à EdicaoContrato. Empresa, origem e origemModuloId não mudam
+ * depois de criado, então ficam fora (a API nem os aceita no PUT).
+ */
+function dadosEditaveis(input: ContratoCreateInput, responsavelId: string) {
+  return {
+    modeloId: input.modeloId || null,
     servicosContratados: input.servicos
       .filter((servico) => servico.nome.trim())
       .map((servico) => ({
@@ -147,9 +149,7 @@ function corpoDoNovoContrato(input: ContratoCreateInput) {
     reajusteAnualPercentual: input.reajusteAnualPercentual ?? null,
     indiceReajuste: reajusteParaApi(input.reajuste),
     avisoPrevioDias: input.avisoPrevioDias ?? 0,
-    responsavelId: idDoUsuarioAtual(),
-    origem: "contratos",
-    origemModuloId: `form-novo-contrato-${crypto.randomUUID()}`,
+    responsavelId,
   };
 }
 
@@ -207,8 +207,13 @@ export const contratosReal: ContratosService = {
     );
     return fromApi(contrato);
   },
-  atualizar(_id, _input) {
-    return incompatibilidadeDeGravacao();
+  /** PUT /contratos/contratos/{id}: só RASCUNHO e EM_APROVACAO aceitam edição (senão 409). */
+  async atualizar(id, input) {
+    const contrato = await http.put<ApiContrato>(
+      `/contratos/contratos/${encodeURIComponent(id)}`,
+      dadosEditaveis(input as ContratoCreateInput, input.responsavelId ?? idDoUsuarioAtual()),
+    );
+    return fromApi(contrato);
   },
   async alterarStatus(id, input) {
     const path = `/contratos/contratos/${encodeURIComponent(id)}`;
